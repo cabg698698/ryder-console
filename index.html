@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>BLE 串口終端機</title>
+<style>
+  :root {
+    --bg: #10151c; --panel: #1a222d; --line: #2b3644; --text: #dfe7ef;
+    --dim: #8494a6; --accent: #3fb6a8; --warn: #e0a84a; --bad: #e0685f; --term: #0a0e13;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.4 -apple-system, "PingFang TC", "Noto Sans TC", sans-serif;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 12px; min-height: 38px; white-space: nowrap;
+  }
+  button:active { background: var(--line); }
+  button:disabled { opacity: .4; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #06221f; font-weight: 600; }
+  button.on { border-color: var(--accent); color: var(--accent); }
+  header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  #status { flex: 1; min-width: 0; font-size: 13px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #status b { color: var(--text); font-weight: 600; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--dim); margin-right: 6px; }
+  .dot.ok { background: var(--accent); } .dot.busy { background: var(--warn); } .dot.err { background: var(--bad); }
+  .row { display: flex; gap: 6px; padding: 6px 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .row::-webkit-scrollbar { display: none; }
+  .row .label { align-self: center; font-size: 12px; color: var(--dim); white-space: nowrap; }
+  #term {
+    flex: 1; min-height: 0; margin: 0; padding: 8px 10px; overflow: auto;
+    background: var(--term); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    font: 12.5px/1.35 ui-monospace, Menlo, Consolas, monospace;
+    white-space: pre-wrap; word-break: break-all; -webkit-user-select: text; user-select: text;
+  }
+  #inputRow { display: flex; gap: 6px; padding: 8px 10px; }
+  #cmd {
+    flex: 1; min-width: 0; background: var(--term); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; font-family: ui-monospace, Menlo, monospace; font-size: 16px;
+  }
+  #cmd:focus { outline: none; border-color: var(--accent); }
+  #sheet {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: flex-end; z-index: 10;
+  }
+  #sheet.show { display: flex; }
+  #sheet .box {
+    width: 100%; max-height: 88%; overflow: auto; background: var(--panel);
+    border-radius: 14px 14px 0 0; padding: 14px 14px 24px;
+  }
+  #sheet h2 { font-size: 16px; margin: 14px 0 8px; }
+  #sheet h2:first-child { margin-top: 0; }
+  #sheet p { font-size: 13px; color: var(--dim); margin: 4px 0 8px; }
+  .field { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  .field label { flex: 0 0 96px; font-size: 13px; color: var(--dim); }
+  .field input[type=text], .field select {
+    flex: 1; min-width: 0; background: var(--term); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font-size: 16px;
+  }
+  .qitem { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
+  .qitem code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  #notice { padding: 10px 12px; margin: 8px 10px 0; border: 1px solid var(--warn); border-radius: 8px; font-size: 13px; color: var(--warn); display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div id="status"><span class="dot" id="dot"></span><span id="statusText">未連線</span></div>
+  <button id="btnConnect" class="primary">連線</button>
+  <button id="btnSettings" aria-label="設定">設定</button>
+</header>
+
+<div id="notice"></div>
+
+<div class="row">
+  <span class="label">鮑率</span>
+  <button id="baud9600">9600</button>
+  <button id="baud115200">115200</button>
+  <span class="label">　按鍵</span>
+  <button data-key="\r">Enter</button>
+  <button data-key=" ">空白</button>
+  <button data-key="\t">Tab</button>
+  <button data-key="?">?</button>
+  <button data-key="\x03">Ctrl+C</button>
+  <button data-key="\x1a">Ctrl+Z</button>
+  <button data-key="\x1b">Esc</button>
+  <button data-key="\x1b[A">↑</button>
+  <button data-key="\x1b[B">↓</button>
+</div>
+
+<div class="row" id="quickRow"></div>
+
+<pre id="term" aria-live="off"></pre>
+
+<div id="inputRow">
+  <input id="cmd" type="text" placeholder="輸入指令，按送出" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="send">
+  <button id="btnSend" class="primary">送出</button>
+</div>
+
+<div id="sheet">
+  <div class="box">
+    <h2>常用指令</h2>
+    <div id="quickList"></div>
+    <div class="field">
+      <input id="quickNew" type="text" placeholder="新增指令，例如 show version" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button id="quickAdd">新增</button>
+    </div>
+
+    <h2>送出設定</h2>
+    <div class="field">
+      <label for="eol">指令結尾</label>
+      <select id="eol">
+        <option value="cr">CR（\r，多數設備）</option>
+        <option value="crlf">CR+LF（\r\n）</option>
+        <option value="lf">LF（\n）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="echo">本機回顯</label>
+      <select id="echo">
+        <option value="0">關（設備會自己回顯）</option>
+        <option value="1">開</option>
+      </select>
+    </div>
+
+    <h2>鮑率切換（AT 指令）</h2>
+    <p>按上方 9600／115200 時，會把下面的指令送給藍牙轉接頭。{baud} 會換成數字。格式請依轉接頭說明書調整。</p>
+    <div class="field">
+      <label for="atTpl">指令格式</label>
+      <input id="atTpl" type="text" autocapitalize="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="atEol">AT 結尾</label>
+      <select id="atEol">
+        <option value="crlf">CR+LF（\r\n）</option>
+        <option value="none">不加</option>
+        <option value="cr">CR（\r）</option>
+        <option value="lf">LF（\n）</option>
+      </select>
+    </div>
+
+    <h2>紀錄</h2>
+    <div class="field">
+      <button id="logCopy">複製全部</button>
+      <button id="logSave">下載 .txt</button>
+      <button id="logClear">清除畫面</button>
+    </div>
+    <p id="logMsg"></p>
+
+    <div class="field" style="margin-top:16px">
+      <button id="sheetClose" class="primary" style="flex:1">完成</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- 小工具 ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var store = {
+    get: function (k, d) { try { var v = localStorage.getItem('bleterm.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set: function (k, v) { try { localStorage.setItem('bleterm.' + k, JSON.stringify(v)); } catch (e) {} }
+  };
+  var EOL = { cr: '\r', crlf: '\r\n', lf: '\n', none: '' };
+
+  var cfg = {
+    eol: store.get('eol', 'cr'),
+    echo: store.get('echo', '0'),
+    atTpl: store.get('atTpl', 'AT+BAUD={baud}'),
+    atEol: store.get('atEol', 'crlf'),
+    quick: store.get('quick', [])
+  };
+
+  // ---------- 終端畫面 ----------
+  var termEl = $('term');
+  var lines = [''];
+  var row = 0, col = 0;
+  var MAX_LINES = 5000;
+  var escState = 0, escBuf = '';
+  var dirty = false;
+
+  function putChar(ch) {
+    var line = lines[row];
+    if (col > line.length) line += new Array(col - line.length + 1).join(' ');
+    lines[row] = line.slice(0, col) + ch + line.slice(col + 1);
+    col++;
+  }
+  function newLine() {
+    row++;
+    if (row >= lines.length) lines.push('');
+    if (lines.length > MAX_LINES) { var cut = lines.length - MAX_LINES; lines.splice(0, cut); row -= cut; }
+  }
+  function handleCsi(seq) {
+    var cmd = seq.charAt(seq.length - 1);
+    var arg = seq.slice(0, -1);
+    if (cmd === 'K') {                       // 清除行
+      if (arg === '' || arg === '0') lines[row] = lines[row].slice(0, col);
+      else if (arg === '2') { lines[row] = ''; }
+    } else if (cmd === 'D') {                // 游標左移
+      col = Math.max(0, col - (parseInt(arg, 10) || 1));
+    } else if (cmd === 'C') {                // 游標右移
+      col += (parseInt(arg, 10) || 1);
+    } else if (cmd === 'J' && arg === '2') { // 清畫面：以空行分隔
+      newLine(); col = 0;
+    }
+    // 其他（顏色等）直接忽略
+  }
+  function feed(text) {
+    for (var i = 0; i < text.length; i++) {
+      var ch = text.charAt(i), code = text.charCodeAt(i);
+      if (escState === 1) {                  // 剛收到 ESC
+        if (ch === '[') { escState = 2; escBuf = ''; }
+        else { escState = 0; }
+        continue;
+      }
+      if (escState === 2) {                  // CSI 序列中
+        escBuf += ch;
+        if (code >= 0x40 && code <= 0x7e) { handleCsi(escBuf); escState = 0; }
+        else if (escBuf.length > 24) { escState = 0; }
+        continue;
+      }
+      if (code === 0x1b) { escState = 1; }
+      else if (ch === '\n') { newLine(); }
+      else if (ch === '\r') { col = 0; }
+      else if (code === 8) { col = Math.max(0, col - 1); }
+      else if (ch === '\t') { do { putChar(' '); } while (col % 8); }
+      else if (code < 0x20 || code === 0x7f) { /* 忽略其他控制字元 */ }
+      else { putChar(ch); }
+    }
+    scheduleRender();
+  }
+  function scheduleRender() {
+    if (dirty) return;
+    dirty = true;
+    requestAnimationFrame(function () {
+      dirty = false;
+      var stick = termEl.scrollHeight - termEl.scrollTop - termEl.clientHeight < 40;
+      termEl.textContent = lines.join('\n');
+      if (stick) termEl.scrollTop = termEl.scrollHeight;
+    });
+  }
+  function sysMsg(msg) {
+    if (col !== 0) { newLine(); col = 0; }
+    feed('[' + msg + ']\r\n');
+  }
+
+  // ---------- 藍牙 ----------
+  // 常見的 BLE 串口服務；BT578 使用 FFE0 / FFE1
+  var SERVICES = [
+    0xffe0, 0xfff0, 0xffe5,
+    '6e400001-b5a3-f393-e0a9-e50e24dcca9e',   // Nordic UART
+    '49535343-fe7d-4ae5-8fa9-9fafd205e455'    // Microchip / ISSC
+  ];
+  var device = null, rxChar = null, txChar = null;
+  var decoder = new TextDecoder('utf-8');
+  var encoder = new TextEncoder();
+  var writeChain = Promise.resolve();
+  var connecting = false;
+
+  function setStatus(kind, text) {
+    $('dot').className = 'dot' + (kind ? ' ' + kind : '');
+    $('statusText').innerHTML = text;
+  }
+  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+  function isConnected() { return !!(device && device.gatt && device.gatt.connected && txChar); }
+  function refreshUi() {
+    $('btnConnect').textContent = isConnected() ? '中斷' : '連線';
+    $('btnConnect').className = isConnected() ? '' : 'primary';
+  }
+
+  function findChars(server) {
+    function fromServices(list) {
+      var seq = Promise.resolve(null);
+      list.forEach(function (svc) {
+        seq = seq.then(function (found) {
+          if (found) return found;
+          return svc.getCharacteristics().then(function (chars) {
+            var rx = null, tx = null;
+            chars.forEach(function (c) {
+              var p = c.properties;
+              if (!rx && (p.notify || p.indicate)) rx = c;
+              if (!tx && (p.writeWithoutResponse || p.write)) tx = c;
+            });
+            return (rx && tx) ? { rx: rx, tx: tx } : null;
+          }).catch(function () { return null; });
+        });
+      });
+      return seq;
+    }
+    // 先試一次抓全部；不支援時逐一嘗試
+    return server.getPrimaryServices().then(fromServices).catch(function () { return null; }).then(function (found) {
+      if (found) return found;
+      var seq = Promise.resolve(null);
+      SERVICES.forEach(function (uuid) {
+        seq = seq.then(function (f) {
+          if (f) return f;
+          return server.getPrimaryService(uuid).then(function (s) { return fromServices([s]); }).catch(function () { return null; });
+        });
+      });
+      return seq;
+    });
+  }
+
+  function onData(ev) {
+    var text = decoder.decode(ev.target.value, { stream: true });
+    if (text) feed(text);
+  }
+  function onDisconnected() {
+    rxChar = null; txChar = null;
+    setStatus('err', '已中斷');
+    sysMsg('藍牙已中斷');
+    refreshUi();
+  }
+
+  function openGatt() {
+    setStatus('busy', '連線中…');
+    return device.gatt.connect().then(findChars).then(function (found) {
+      if (!found) throw new Error('找不到串口服務（這個裝置可能不是 BLE 串口轉接頭）');
+      rxChar = found.rx; txChar = found.tx;
+      rxChar.addEventListener('characteristicvaluechanged', onData);
+      return rxChar.startNotifications();
+    }).then(function () {
+      setStatus('ok', '已連線 <b>' + esc(device.name || '未命名裝置') + '</b>');
+      sysMsg('已連線 ' + (device.name || '') + '，按 Enter 喚醒設備');
+      refreshUi();
+    });
+  }
+
+  function connect() {
+    if (connecting) return;
+    if (!navigator.bluetooth) { showNotice(); return; }
+    connecting = true;
+    setStatus('busy', '請選擇裝置…');
+    navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: SERVICES })
+      .then(function (d) {
+        device = d;
+        device.addEventListener('gattserverdisconnected', onDisconnected);
+        return openGatt();
+      })
+      .catch(function (e) {
+        var msg = (e && e.message) || String(e);
+        if (e && e.name === 'NotFoundError') { setStatus('', '未連線'); }
+        else { setStatus('err', '連線失敗'); sysMsg('連線失敗：' + msg); }
+        refreshUi();
+      })
+      .then(function () { connecting = false; });
+  }
+  function disconnect() {
+    if (device && device.gatt && device.gatt.connected) device.gatt.disconnect();
+  }
+
+  // 送資料：切成 20 bytes 一包，依序送出
+  function sendBytes(bytes) {
+    if (!isConnected()) { sysMsg('尚未連線'); return Promise.resolve(false); }
+    var ch = txChar;
+    for (var i = 0; i < bytes.length; i += 20) {
+      (function (chunk) {
+        writeChain = writeChain.then(function () {
+          if (ch.properties.writeWithoutResponse && ch.writeValueWithoutResponse) return ch.writeValueWithoutResponse(chunk);
+          if (ch.writeValueWithResponse && ch.properties.write) return ch.writeValueWithResponse(chunk);
+          return ch.writeValue(chunk);
+        }).then(function () {
+          return new Promise(function (r) { setTimeout(r, 15); });
+        }).catch(function (e) {
+          sysMsg('送出失敗：' + ((e && e.message) || e));
+        });
+      })(bytes.slice(i, i + 20));
+    }
+    return writeChain.then(function () { return true; });
+  }
+  function sendText(text) {
+    if (cfg.echo === '1' && isConnected()) feed(text.replace(/\r(?!\n)/g, '\r\n'));
+    return sendBytes(encoder.encode(text));
+  }
+  function sendLine(text) { return sendText(text + EOL[cfg.eol]); }
+
+  function setBaud(baud) {
+    if (!isConnected()) { sysMsg('請先連線，再切換鮑率'); return; }
+    var cmdText = cfg.atTpl.replace('{baud}', String(baud));
+    sysMsg('送出 ' + cmdText + '（切換轉接頭鮑率為 ' + baud + '）');
+    sendBytes(encoder.encode(cmdText + EOL[cfg.atEol])).then(function (ok) {
+      if (!ok) return;
+      store.set('baud', baud);
+      markBaud(baud);
+    });
+  }
+  function markBaud(baud) {
+    $('baud9600').className = baud === 9600 ? 'on' : '';
+    $('baud115200').className = baud === 115200 ? 'on' : '';
+  }
+
+  // ---------- 介面 ----------
+  function showNotice() {
+    var n = $('notice');
+    n.style.display = 'block';
+    n.textContent = '這個瀏覽器不支援 Web Bluetooth。iPhone 請用「Bluefy」App 開啟本頁，而且網址必須是 https:// 開頭。';
+    setStatus('err', '瀏覽器不支援藍牙');
+  }
+
+  function renderQuick() {
+    var rowEl = $('quickRow'), listEl = $('quickList');
+    rowEl.innerHTML = ''; listEl.innerHTML = '';
+    var label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = cfg.quick.length ? '常用' : '常用指令可在「設定」新增';
+    rowEl.appendChild(label);
+    cfg.quick.forEach(function (q, idx) {
+      var b = document.createElement('button');
+      b.textContent = q;
+      b.addEventListener('click', function () { sendLine(q); });
+      rowEl.appendChild(b);
+
+      var item = document.createElement('div'); item.className = 'qitem';
+      var code = document.createElement('code'); code.textContent = q;
+      var del = document.createElement('button'); del.textContent = '刪除';
+      del.addEventListener('click', function () {
+        cfg.quick.splice(idx, 1); store.set('quick', cfg.quick); renderQuick();
+      });
+      item.appendChild(code); item.appendChild(del); listEl.appendChild(item);
+    });
+  }
+
+  function submitCmd() {
+    var input = $('cmd');
+    sendLine(input.value);
+    input.value = '';
+    input.focus();
+  }
+
+  $('btnConnect').addEventListener('click', function () { if (isConnected()) disconnect(); else connect(); });
+  $('btnSend').addEventListener('click', submitCmd);
+  $('cmd').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitCmd(); } });
+  $('baud9600').addEventListener('click', function () { setBaud(9600); });
+  $('baud115200').addEventListener('click', function () { setBaud(115200); });
+
+  var KEYMAP = { '\\r': '\r', '\\t': '\t', '\\x03': '\x03', '\\x1a': '\x1a', '\\x1b': '\x1b', '\\x1b[A': '\x1b[A', '\\x1b[B': '\x1b[B' };
+  Array.prototype.forEach.call(document.querySelectorAll('[data-key]'), function (b) {
+    b.addEventListener('click', function () {
+      var k = b.getAttribute('data-key');
+      var out = KEYMAP.hasOwnProperty(k) ? KEYMAP[k] : k;
+      if (out === '\r') out = EOL[cfg.eol];
+      sendBytes(encoder.encode(out));
+    });
+  });
+
+  // 設定面板
+  $('btnSettings').addEventListener('click', function () {
+    $('eol').value = cfg.eol; $('echo').value = cfg.echo;
+    $('atTpl').value = cfg.atTpl; $('atEol').value = cfg.atEol;
+    $('logMsg').textContent = '';
+    $('sheet').className = 'show';
+  });
+  $('sheetClose').addEventListener('click', function () {
+    cfg.eol = $('eol').value; cfg.echo = $('echo').value;
+    cfg.atTpl = $('atTpl').value || 'AT+BAUD={baud}'; cfg.atEol = $('atEol').value;
+    store.set('eol', cfg.eol); store.set('echo', cfg.echo);
+    store.set('atTpl', cfg.atTpl); store.set('atEol', cfg.atEol);
+    $('sheet').className = '';
+  });
+  $('quickAdd').addEventListener('click', function () {
+    var v = $('quickNew').value.trim();
+    if (!v) return;
+    cfg.quick.push(v); store.set('quick', cfg.quick);
+    $('quickNew').value = ''; renderQuick();
+  });
+
+  // 紀錄
+  function logText() { return lines.join('\n'); }
+  $('logCopy').addEventListener('click', function () {
+    var done = function (ok) { $('logMsg').textContent = ok ? '已複製到剪貼簿' : '複製失敗，請長按畫面文字手動選取'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(logText()).then(function () { done(true); }, function () { done(false); });
+    } else { done(false); }
+  });
+  $('logSave').addEventListener('click', function () {
+    try {
+      var d = new Date();
+      var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+      var name = 'console-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.txt';
+      var url = URL.createObjectURL(new Blob([logText()], { type: 'text/plain' }));
+      var a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+      $('logMsg').textContent = '若沒有出現下載，請改用「複製全部」';
+    } catch (e) { $('logMsg').textContent = '下載失敗，請改用「複製全部」'; }
+  });
+  $('logClear').addEventListener('click', function () {
+    lines = ['']; row = 0; col = 0; scheduleRender();
+    $('logMsg').textContent = '已清除';
+  });
+
+  // 鍵盤彈出時讓版面跟著縮，輸入列不被擋住
+  if (window.visualViewport) {
+    var fit = function () { document.body.style.height = window.visualViewport.height + 'px'; window.scrollTo(0, 0); };
+    window.visualViewport.addEventListener('resize', fit);
+    fit();
+  }
+
+  // 啟動
+  renderQuick();
+  var lastBaud = store.get('baud', null);
+  if (lastBaud) markBaud(lastBaud);
+  refreshUi();
+  if (!navigator.bluetooth) showNotice();
+  else feed('BLE 串口終端機\r\n按右上角「連線」，選擇你的藍牙轉接頭。\r\n');
+})();
+</script>
+</body>
+</html>
