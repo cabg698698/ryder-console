@@ -514,7 +514,7 @@ footer span{display:inline-flex;align-items:center;gap:6px}
         <div class="field"><label for="cfgAt">鮑率切換指令</label><div class="input"><input id="cfgAt" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div></div>
         <div class="field"><label for="cfgAtEol">AT 指令結尾</label><div class="input sel"><select id="cfgAtEol">
           <option value="crlf">CR+LF（\r\n）</option><option value="none">不加</option><option value="cr">CR（\r）</option><option value="lf">LF（\n）</option></select></div></div>
-        <p class="note">按 9600 / 115200 時會把「鮑率切換指令」送給藍牙轉接頭，<code>{baud}</code> 會換成數字。格式請依轉接頭說明書調整。逐行送出間隔太短時，慢速設備可能會漏字。</p>
+        <p class="note">按 9600 / 115200 時會把「鮑率切換指令」送給藍牙轉接頭。預設為 BT578 V3 的格式 <code>AT+BAUD{code}</code>（9600 送 AT+BAUD4、115200 送 AT+BAUD8，轉接頭回 +OK 即成功，斷電後仍保留）。其他轉接頭可改用 <code>{baud}</code> 代入數字。逐行送出間隔太短時，慢速設備可能會漏字。</p>
       </div>
       <div class="term-keys">
         <span class="lbl">鮑率</span>
@@ -1409,7 +1409,11 @@ $("#dbClear").onclick=async()=>{
    藍牙串口 (BT578 等 BLE 轉 RS232)
    ===================================================================== */
 const EOL = { cr:"\r", crlf:"\r\n", lf:"\n", none:"" };
-const cfg = Object.assign({ eol:"cr", echo:"0", atTpl:"AT+BAUD={baud}", atEol:"crlf", delay:"500" }, ls.get("rc.cfg", {}) || {});
+// BT578 V3：AT+BAUDn，n 為代號 (4=9600、8=115200)，結尾 CR+LF
+const BAUD_CODE = {2400:2, 4800:3, 9600:4, 19200:5, 38400:6, 57600:7, 115200:8};
+const DEFAULT_AT = "AT+BAUD{code}";
+const cfg = Object.assign({ eol:"cr", echo:"0", atTpl:DEFAULT_AT, atEol:"crlf", delay:"500" }, ls.get("rc.cfg", {}) || {});
+if(cfg.atTpl==="AT+BAUD={baud}") cfg.atTpl=DEFAULT_AT;   // 舊版預設值 (不適用 BT578 V3)
 const saveCfg = () => ls.set("rc.cfg", cfg);
 
 // 終端畫面：處理 CR / BS / 常見 ANSI 控制碼
@@ -1545,7 +1549,7 @@ const sendLine = text => sendText(text+EOL[cfg.eol]);
 
 function setBaud(baud){
   if(!isConnected()){ toast("請先連線藍牙，再切換鮑率","warn"); return; }
-  const cmd=cfg.atTpl.replace("{baud}",String(baud));
+  const cmd=cfg.atTpl.replace("{baud}",String(baud)).replace("{code}",String(BAUD_CODE[baud]??""));
   sysMsg("送出 "+cmd+"（切換轉接頭鮑率為 "+baud+"）");
   sendBytes(encoder.encode(cmd+EOL[cfg.atEol])).then(ok=>{
     if(!ok) return;
@@ -1576,7 +1580,7 @@ $("#termClear").onclick=()=>{ lines=[""]; row=0; col=0; scheduleRender(true); };
 $("#termSettingsBtn").onclick=()=>{ const s=$("#termSettings"); s.hidden=!s.hidden; $("#termSettingsBtn").classList.toggle("on",!s.hidden); };
 F("cfgDelay").value=cfg.delay; F("cfgEol").value=cfg.eol; F("cfgEcho").value=cfg.echo; F("cfgAt").value=cfg.atTpl; F("cfgAtEol").value=cfg.atEol;
 [["cfgDelay","delay"],["cfgEol","eol"],["cfgEcho","echo"],["cfgAtEol","atEol"]].forEach(([id,k])=>F(id).addEventListener("change",()=>{ cfg[k]=F(id).value; saveCfg(); }));
-F("cfgAt").addEventListener("input",()=>{ cfg.atTpl=F("cfgAt").value.trim()||"AT+BAUD={baud}"; saveCfg(); });
+F("cfgAt").addEventListener("input",()=>{ cfg.atTpl=F("cfgAt").value.trim()||DEFAULT_AT; saveCfg(); });
 
 function showBleNotice(){
   const n=$("#termNotice"); n.hidden=false;

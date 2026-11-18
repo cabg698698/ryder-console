@@ -129,7 +129,7 @@
     </div>
 
     <h2>鮑率切換（AT 指令）</h2>
-    <p>按上方 9600／115200 時，會把下面的指令送給藍牙轉接頭。{baud} 會換成數字。格式請依轉接頭說明書調整。</p>
+    <p>按上方 9600／115200 時，會把下面的指令送給藍牙轉接頭。預設是 BT578 V3 格式：{code} 會換成代號（9600→4、115200→8）。其他轉接頭可改用 {baud} 代入數字。</p>
     <div class="field">
       <label for="atTpl">指令格式</label>
       <input id="atTpl" type="text" autocapitalize="off" autocorrect="off" spellcheck="false">
@@ -173,7 +173,7 @@
   var cfg = {
     eol: store.get('eol', 'cr'),
     echo: store.get('echo', '0'),
-    atTpl: store.get('atTpl', 'AT+BAUD={baud}'),
+    atTpl: (function (t) { return t === 'AT+BAUD={baud}' ? 'AT+BAUD{code}' : t; })(store.get('atTpl', 'AT+BAUD{code}')),
     atEol: store.get('atEol', 'crlf'),
     quick: store.get('quick', [])
   };
@@ -383,7 +383,8 @@
 
   function setBaud(baud) {
     if (!isConnected()) { sysMsg('請先連線，再切換鮑率'); return; }
-    var cmdText = cfg.atTpl.replace('{baud}', String(baud));
+    var BAUD_CODE = { 2400: 2, 4800: 3, 9600: 4, 19200: 5, 38400: 6, 57600: 7, 115200: 8 };  // BT578 V3 代號
+    var cmdText = cfg.atTpl.replace('{baud}', String(baud)).replace('{code}', String(BAUD_CODE[baud] || ''));
     sysMsg('送出 ' + cmdText + '（切換轉接頭鮑率為 ' + baud + '）');
     sendBytes(encoder.encode(cmdText + EOL[cfg.atEol])).then(function (ok) {
       if (!ok) return;
@@ -459,7 +460,7 @@
   });
   $('sheetClose').addEventListener('click', function () {
     cfg.eol = $('eol').value; cfg.echo = $('echo').value;
-    cfg.atTpl = $('atTpl').value || 'AT+BAUD={baud}'; cfg.atEol = $('atEol').value;
+    cfg.atTpl = $('atTpl').value || 'AT+BAUD{code}'; cfg.atEol = $('atEol').value;
     store.set('eol', cfg.eol); store.set('echo', cfg.echo);
     store.set('atTpl', cfg.atTpl); store.set('atEol', cfg.atEol);
     $('sheet').className = '';
