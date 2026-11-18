@@ -335,10 +335,25 @@ footer span{display:inline-flex;align-items:center;gap:6px}
 .term{flex:1;min-height:0;margin:0;padding:10px 12px;overflow:auto;background:rgba(5,8,18,.6);font-family:var(--mono);font-size:var(--tfs,12px);line-height:1.4;color:var(--text);
   white-space:pre;overflow-wrap:normal;-webkit-user-select:text;user-select:text;-webkit-overflow-scrolling:touch;tab-size:8}
 .term.wrap{white-space:pre-wrap;word-break:break-all}
-/* 全螢幕終端機：隱藏上方標題、分頁與參數，終端機佔滿畫面 */
+/* 終端機頁：整個畫面固定在可視範圍 (跟著鍵盤縮放)，頁面本身不捲動，只有終端機內容可以捲 */
+html.term-mode,html.term-mode body{overflow:hidden;overscroll-behavior:none;height:100%}
+html.term-mode body{position:fixed;inset:0;width:100%}
+html.term-mode .app{position:fixed;left:0;right:0;top:var(--vvtop,0px);height:var(--vvh,100dvh);min-height:0;overflow:hidden;
+  padding-bottom:max(8px,env(safe-area-inset-bottom))}
+html.term-mode #view-term{flex:1;min-height:0}
+html.term-mode .term-panel{flex:1;height:auto;min-height:0}
+html.term-mode.kb-open .app{padding-bottom:6px}
+html.term-mode .brand,html.term-mode #status{display:none}   /* 終端機頁精簡標題：只留藍牙狀態與分頁 */
+html.term-mode header{gap:8px}
+html.term-mode.kb-open header{display:none}          /* 打字時 (鍵盤打開) 隱藏標題，留空間給終端機 */
+.term-panel{position:relative}
+.term{overscroll-behavior:contain;touch-action:pan-x pan-y}
+.jump{position:absolute;right:14px;bottom:72px;z-index:3;display:none;box-shadow:0 8px 24px -6px rgba(0,0,0,.7);
+  background:var(--panel-solid);border-color:rgba(34,211,238,.5);color:var(--accent2)}
+.jump.show{display:inline-flex}
+/* 全螢幕終端機：隱藏上方標題與分頁 */
 body.term-full header,body.term-full footer{display:none !important}
-body.term-full .app{padding-top:max(8px,env(safe-area-inset-top));gap:0}
-body.term-full .term-panel{height:calc(100dvh - max(16px,env(safe-area-inset-top)) - max(16px,env(safe-area-inset-bottom)))}
+body.term-full .app{gap:0}
 /* 常用帳密 */
 .cred-list{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto}
 .cred{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
@@ -563,6 +578,7 @@ body.term-full .term-panel{height:calc(100dvh - max(16px,env(safe-area-inset-top
         <button class="btn ghost" id="termClear"><svg class="i"><use href="#i-broom"/></svg>清除</button>
       </div>
       <pre class="term" id="term"></pre>
+      <button class="btn jump" id="jumpBtn"><svg class="i"><use href="#i-arrow-down"/></svg>最新輸出</button>
       <div class="term-input">
         <div class="input" style="flex:1"><input id="cmd" placeholder="輸入指令，按送出" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send"></div>
         <button class="btn primary sm" id="cmdSend"><svg class="i"><use href="#i-send"/></svg>送出</button>
@@ -945,6 +961,8 @@ function firmwareList(devices, name) {
 </script>
 <script>
 const $ = s => document.querySelector(s);
+const rootEl = document.documentElement;
+let kbFocus = false;
 const icon = id => `<svg class="i"><use href="#i-${id}"/></svg>`;
 const MISSING = "此型號沒有設定這個區塊的內容。";
 const MASKS = ["255.255.255.128","255.255.255.192","255.255.255.224","255.255.255.240","255.255.255.248","255.255.255.252"];
@@ -1265,7 +1283,8 @@ function switchTab(tab){
   $("#genLabel").textContent = tab==="restore" ? "產生指令" : "升版指令產生";
   movePill(); calcNet();
   if(tab==="db") renderDbView();
-  if(tab==="term"){ scheduleRender(true); }
+  rootEl.classList.toggle("term-mode", tab==="term");
+  if(tab==="term"){ window.scrollTo(0,0); fitViewport(); scheduleRender(true); }
   ls.set("msan.tab",tab);
 }
 document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
@@ -1537,14 +1556,28 @@ function feed(text){
   }
   scheduleRender();
 }
+// 跟隨模式：在最底下時自動捲到最新；使用者往上看或正在拖動時不打擾，改顯示「最新輸出」按鈕
+let follow=true, touching=false, pendingBottom=false;
+const atBottom = () => termEl.scrollHeight-termEl.scrollTop-termEl.clientHeight < 30;
+function goBottom(){ follow=true; termEl.scrollTop=termEl.scrollHeight; $("#jumpBtn").classList.remove("show"); }
+termEl.addEventListener("scroll",()=>{ if(touching || !atBottom()) { if(atBottom()) { follow=true; $("#jumpBtn").classList.remove("show"); } else follow=false; } });
+termEl.addEventListener("touchstart",()=>{ touching=true; },{passive:true});
+termEl.addEventListener("touchend",()=>{ touching=false; if(atBottom()){ follow=true; $("#jumpBtn").classList.remove("show"); } },{passive:true});
+termEl.addEventListener("touchcancel",()=>{ touching=false; },{passive:true});
 function scheduleRender(forceBottom){
-  if(dirty && !forceBottom) return;
+  if(forceBottom) pendingBottom=true;
+  if(dirty) return;
   dirty=true;
   requestAnimationFrame(()=>{
     dirty=false;
-    const stick = forceBottom || termEl.scrollHeight-termEl.scrollTop-termEl.clientHeight<40;
-    termEl.textContent=lines.map(l=>l.replace(/\s+$/,"")).join("\n");
-    if(stick) termEl.scrollTop=termEl.scrollHeight;
+    const left=termEl.scrollLeft, topPos=termEl.scrollTop;
+    const text=lines.map(l=>l.replace(/\s+$/,"")).join("\n");
+    const changed = termEl.textContent!==text;
+    if(changed) termEl.textContent=text;
+    termEl.scrollLeft=left;
+    if(pendingBottom){ pendingBottom=false; goBottom(); }
+    else if(follow && !touching) termEl.scrollTop=termEl.scrollHeight;
+    else { termEl.scrollTop=topPos; if(changed) $("#jumpBtn").classList.add("show"); }
     let k=row; while(k>0 && !(lines[k]||"").trim()) k--;
     $("#sbTail").textContent=lines[k]||"";
   });
@@ -1673,12 +1706,28 @@ const KEYMAP={"\\t":"\t","\\x03":"\x03","\\x1a":"\x1a","\\x1b":"\x1b","\\x1b[A":
 document.querySelectorAll("[data-key]").forEach(b=>b.onclick=()=>{
   const k=b.dataset.key;
   if(!isConnected()) return toast("藍牙尚未連線","warn");
-  sendBytes(encoder.encode(k==="enter" ? EOL[cfg.eol] : (KEYMAP[k] ?? k)));
+  goBottom(); sendBytes(encoder.encode(k==="enter" ? EOL[cfg.eol] : (KEYMAP[k] ?? k)));
 });
 function submitCmd(){
   if(!isConnected()) return toast("藍牙尚未連線","warn");
-  sendLine(F("cmd").value); F("cmd").value=""; F("cmd").focus();
+  goBottom(); sendLine(F("cmd").value); F("cmd").value=""; F("cmd").focus();
 }
+$("#jumpBtn").onclick=goBottom;
+
+// 可視範圍 (鍵盤打開時會縮小)：讓終端機頁剛好填滿，鍵盤關閉後回到原位
+function fitViewport(){
+  const vv=window.visualViewport, h=vv?vv.height:window.innerHeight, t=vv?vv.offsetTop:0;
+  rootEl.style.setProperty("--vvh", Math.round(h)+"px");
+  rootEl.style.setProperty("--vvtop", Math.round(t)+"px");
+  const was=rootEl.classList.contains("kb-open"), now=kbFocus || window.innerHeight - h > 120;
+  rootEl.classList.toggle("kb-open", now);
+  if(was && !now) requestAnimationFrame(movePill);   // 標題重新顯示後，重新定位分頁的亮色底
+}
+if(window.visualViewport){ visualViewport.addEventListener("resize",fitViewport); visualViewport.addEventListener("scroll",fitViewport); }
+window.addEventListener("resize",fitViewport);
+F("cmd").addEventListener("focus",()=>{ kbFocus=true; fitViewport(); setTimeout(()=>{ fitViewport(); if(follow) goBottom(); },300); });
+F("cmd").addEventListener("blur",()=>{ kbFocus=false; setTimeout(()=>{ window.scrollTo(0,0); fitViewport(); if(follow) goBottom(); },250); });
+fitViewport();
 $("#cmdSend").onclick=submitCmd;
 F("cmd").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); submitCmd(); } });
 $("#termCopy").onclick=async()=>{ await copyText(lines.map(l=>l.replace(/\s+$/,"")).join("\n")); toast("已複製終端機內容","success",1600); };
