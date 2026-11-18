@@ -332,8 +332,24 @@ footer span{display:inline-flex;align-items:center;gap:6px}
 .term-keys::-webkit-scrollbar{display:none}
 .term-keys .lbl{font-size:12px;color:var(--dim);white-space:nowrap;margin:0 2px}
 .term-keys .sep{width:1px;align-self:stretch;background:var(--line);margin:0 4px;flex:none}
-.term{flex:1;min-height:0;margin:0;padding:10px 14px;overflow:auto;background:rgba(5,8,18,.6);font:13px/1.45 var(--mono);color:var(--text);
-  white-space:pre-wrap;word-break:break-all;-webkit-user-select:text;user-select:text}
+.term{flex:1;min-height:0;margin:0;padding:10px 12px;overflow:auto;background:rgba(5,8,18,.6);font-family:var(--mono);font-size:var(--tfs,12px);line-height:1.4;color:var(--text);
+  white-space:pre;overflow-wrap:normal;-webkit-user-select:text;user-select:text;-webkit-overflow-scrolling:touch;tab-size:8}
+.term.wrap{white-space:pre-wrap;word-break:break-all}
+/* 全螢幕終端機：隱藏上方標題、分頁與參數，終端機佔滿畫面 */
+body.term-full header,body.term-full footer{display:none !important}
+body.term-full .app{padding-top:max(8px,env(safe-area-inset-top));gap:0}
+body.term-full .term-panel{height:calc(100dvh - max(16px,env(safe-area-inset-top)) - max(16px,env(safe-area-inset-bottom)))}
+/* 常用帳密 */
+.cred-list{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto}
+.cred{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
+.cred .c1{display:flex;align-items:center;gap:8px}
+.cred .c1 b{font-size:14.5px}
+.cred .c1 .u{font:13px var(--mono);color:var(--muted);margin-left:auto;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cred .c2{display:flex;gap:6px;flex-wrap:wrap}
+.cred .c2 .btn{flex:1}
+.cred-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cred-form .field.full{grid-column:1/-1}
+.cred-note{font-size:12.5px;color:var(--muted);line-height:1.6}
 .term-input{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
 .term-input input{font-size:16px !important}
 .term-settings{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end}
@@ -430,6 +446,7 @@ footer span{display:inline-flex;align-items:center;gap:6px}
   <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></symbol>
   <symbol id="i-bt" viewBox="0 0 24 24"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></symbol>
   <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M15.5 7.5l3 3M18 5l2 2"/></symbol>
 </svg>
 
 <div class="app">
@@ -500,8 +517,9 @@ footer span{display:inline-flex;align-items:center;gap:6px}
     <div class="panel term-panel">
       <div class="adm-head">
         <h3>終端機</h3><span class="tag-n" id="termDev">未連線</span>
-        <div style="margin-left:auto;display:flex;gap:6px">
+        <div style="margin-left:auto;display:flex;gap:4px">
           <button class="btn" id="termConnect"><svg class="i"><use href="#i-bt"/></svg><span>連線</span></button>
+          <button class="btn ghost icon" id="termFull" title="全螢幕"><svg class="i"><use href="#i-expand"/></svg></button>
           <button class="btn ghost icon" id="termSettingsBtn" title="設定"><svg class="i"><use href="#i-sliders"/></svg></button>
         </div>
       </div>
@@ -519,6 +537,8 @@ footer span{display:inline-flex;align-items:center;gap:6px}
         <p class="note">按 9600 / 115200 時會把「鮑率切換指令」送給藍牙轉接頭。預設為 BT578 V3 的格式 <code>AT+BAUD{code}</code>（9600 送 AT+BAUD4、115200 送 AT+BAUD8，轉接頭回 +OK 即成功，斷電後仍保留）。其他轉接頭可改用 <code>{baud}</code> 代入數字。逐行送出間隔太短時，慢速設備可能會漏字。</p>
       </div>
       <div class="term-keys">
+        <button class="btn" id="credBtn" style="color:var(--violet);border-color:rgba(167,139,250,.45);background:rgba(167,139,250,.1)"><svg class="i"><use href="#i-key"/></svg>帳密</button>
+        <span class="sep"></span>
         <span class="lbl">鮑率</span>
         <button class="btn" id="baud9600">9600</button>
         <button class="btn" id="baud115200">115200</button>
@@ -532,6 +552,12 @@ footer span{display:inline-flex;align-items:center;gap:6px}
         <button class="btn" data-key="\x1b">Esc</button>
         <button class="btn" data-key="\x1b[A">↑</button>
         <button class="btn" data-key="\x1b[B">↓</button>
+        <button class="btn" data-key="a" title="D-Link 分頁時顯示全部">a 全部</button>
+        <button class="btn" data-key="q" title="離開分頁">q</button>
+        <span class="sep"></span>
+        <button class="btn ghost" id="fontDown" title="字縮小">A−</button>
+        <button class="btn ghost" id="fontUp" title="字放大">A＋</button>
+        <button class="btn ghost" id="wrapBtn" title="自動換行">換行</button>
         <span class="sep"></span>
         <button class="btn ghost" id="termCopy"><svg class="i"><use href="#i-copy"/></svg>複製全部</button>
         <button class="btn ghost" id="termClear"><svg class="i"><use href="#i-broom"/></svg>清除</button>
@@ -608,6 +634,23 @@ footer span{display:inline-flex;align-items:center;gap:6px}
       <button class="btn ghost" id="sendNone">全不選</button>
       <button class="btn primary sm" id="sendGo"><svg class="i"><use href="#i-send"/></svg><span id="sendGoLabel">送出勾選的行</span></button>
     </div>
+  </div>
+</div>
+<!-- 常用帳密 -->
+<div class="modal" id="credModal">
+  <div class="panel dlg" style="width:min(560px,100%) !important;max-height:100%;overflow:auto">
+    <h3>常用帳密</h3>
+    <div class="cred-list" id="credList"></div>
+    <div id="credFormWrap" hidden>
+      <div class="cred-form">
+        <div class="field full"><label for="credName">名稱</label><div class="input"><input id="credName" placeholder="例：D-Link 維護帳號" autocomplete="off"></div></div>
+        <div class="field"><label for="credUser">帳號</label><div class="input"><input id="credUser" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div></div>
+        <div class="field"><label for="credPass">密碼 <span class="tag manual" id="credShow">顯示</span></label><div class="input"><input id="credPass" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"></div></div>
+      </div>
+      <div class="dlg-actions"><button class="btn" id="credFormCancel">取消</button><button class="btn primary sm" id="credSave"><svg class="i"><use href="#i-save"/></svg>儲存</button></div>
+    </div>
+    <p class="cred-note">帳密只存在這支手機的瀏覽器裡，不會上傳；但沒有加密，用這支手機開啟 Bluefy 的人都看得到，請勿存放個人密碼。</p>
+    <div class="dlg-actions"><button class="btn ghost" id="credAdd"><svg class="i"><use href="#i-plus"/></svg>新增帳密</button><span style="flex:1"></span><button class="btn" id="credClose">關閉</button></div>
   </div>
 </div>
 <!-- 通用對話框 (確認 / 輸入) -->
@@ -1299,7 +1342,7 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){
     if($("#dlg").classList.contains("open")) return $("#dlgCancel").click();
     if($("#impModal").classList.contains("open")) return $("#impCancel").click();
-    $("#sendModal").classList.remove("open"); closeModal();
+    $("#sendModal").classList.remove("open"); $("#credModal").classList.remove("open"); closeModal();
   }
   if(state.tab!=="restore" && state.tab!=="upgrade") return;
   if(e.ctrlKey && e.key==="Enter"){ e.preventDefault(); generate(); }
@@ -1426,36 +1469,69 @@ const cfg = Object.assign({ eol:"cr", echo:"0", atTpl:DEFAULT_AT, atEol:"crlf", 
 if(cfg.atTpl==="AT+BAUD={baud}") cfg.atTpl=DEFAULT_AT;   // 舊版預設值 (不適用 BT578 V3)
 const saveCfg = () => ls.set("rc.cfg", cfg);
 
-// 終端畫面：處理 CR / BS / 常見 ANSI 控制碼
+// 終端畫面：模擬 VT100 (游標定位、清除、上下移動)，讓設備畫的表格、分頁畫面正確顯示
 const termEl = $("#term");
-let lines=[""], row=0, col=0, escState=0, escBuf="", dirty=false;
+let lines=[""], row=0, col=0, scrTop=0, saved=[0,0], escState=0, escBuf="", dirty=false;
 const MAX_LINES=5000;
+function ensureRow(r){ while(lines.length<=r) lines.push(""); }
 function putChar(ch){
+  ensureRow(row);
   let line=lines[row];
   if(col>line.length) line+=" ".repeat(col-line.length);
   lines[row]=line.slice(0,col)+ch+line.slice(col+1); col++;
 }
 function newLine(){
-  row++; if(row>=lines.length) lines.push("");
-  if(lines.length>MAX_LINES){ const cut=lines.length-MAX_LINES; lines.splice(0,cut); row-=cut; }
+  row++; ensureRow(row);
+  if(lines.length>MAX_LINES){ const cut=lines.length-MAX_LINES; lines.splice(0,cut); row-=cut; scrTop=Math.max(0,scrTop-cut); }
+}
+function newPage(){
+  // 清畫面：保留之前的內容在上方 (可往上捲)，從新的一行開始當作畫面頂端
+  if(lines[lines.length-1]!=="") lines.push("");
+  scrTop=lines.length-1; row=scrTop; col=0;
 }
 function handleCsi(seq){
-  const cmd=seq.slice(-1), arg=seq.slice(0,-1);
-  if(cmd==="K"){ if(arg===""||arg==="0") lines[row]=lines[row].slice(0,col); else if(arg==="2") lines[row]=""; }
-  else if(cmd==="D") col=Math.max(0,col-(parseInt(arg,10)||1));
-  else if(cmd==="C") col+=(parseInt(arg,10)||1);
-  else if(cmd==="J"&&arg==="2"){ newLine(); col=0; }
+  const cmd=seq.slice(-1), raw=seq.slice(0,-1);
+  if(/^[?>=]/.test(raw)) return;                      // 模式設定 (例如 ESC[?25l)，忽略
+  const a=raw.split(";").map(n=>parseInt(n,10)), n=a[0]||1;
+  switch(cmd){
+    case "A": row=Math.max(scrTop,row-n); break;
+    case "B": row+=n; ensureRow(row); break;
+    case "C": col+=n; break;
+    case "D": col=Math.max(0,col-n); break;
+    case "G": col=Math.max(0,n-1); break;
+    case "d": row=scrTop+Math.max(0,n-1); ensureRow(row); break;
+    case "H": case "f": row=scrTop+Math.max(0,(a[0]||1)-1); col=Math.max(0,(a[1]||1)-1); ensureRow(row); break;
+    case "J":
+      if(raw==="2"||raw==="3"){ newPage(); }
+      else if(raw===""||raw==="0"){ ensureRow(row); lines[row]=lines[row].slice(0,col); lines.length=row+1; }
+      break;
+    case "K":
+      ensureRow(row);
+      if(raw===""||raw==="0") lines[row]=lines[row].slice(0,col);
+      else if(raw==="1") lines[row]=" ".repeat(Math.min(col+1,lines[row].length))+lines[row].slice(col+1);
+      else if(raw==="2") lines[row]="";
+      break;
+    case "s": saved=[row-scrTop,col]; break;
+    case "u": row=scrTop+saved[0]; col=saved[1]; ensureRow(row); break;
+  }
 }
 function feed(text){
   for(let i=0;i<text.length;i++){
     const ch=text[i], code=text.charCodeAt(i);
-    if(escState===1){ if(ch==="["){ escState=2; escBuf=""; } else escState=0; continue; }
+    if(escState===1){
+      if(ch==="["){ escState=2; escBuf=""; }
+      else if(ch==="("||ch===")"){ escState=3; }        // 字元集選擇，略過下一個字
+      else { escState=0; if(ch==="7") saved=[row-scrTop,col]; else if(ch==="8"){ row=scrTop+saved[0]; col=saved[1]; ensureRow(row); } else if(ch==="c") newPage(); else if(ch==="D") newLine(); else if(ch==="M") row=Math.max(scrTop,row-1); }
+      continue;
+    }
+    if(escState===3){ escState=0; continue; }
     if(escState===2){ escBuf+=ch; if(code>=0x40&&code<=0x7e){ handleCsi(escBuf); escState=0; } else if(escBuf.length>24) escState=0; continue; }
     if(code===0x1b) escState=1;
     else if(ch==="\n") newLine();
     else if(ch==="\r") col=0;
     else if(code===8) col=Math.max(0,col-1);
     else if(ch==="\t"){ do putChar(" "); while(col%8); }
+    else if(code===7) {}
     else if(code<0x20||code===0x7f){}
     else putChar(ch);
   }
@@ -1467,10 +1543,9 @@ function scheduleRender(forceBottom){
   requestAnimationFrame(()=>{
     dirty=false;
     const stick = forceBottom || termEl.scrollHeight-termEl.scrollTop-termEl.clientHeight<40;
-    termEl.textContent=lines.join("\n");
+    termEl.textContent=lines.map(l=>l.replace(/\s+$/,"")).join("\n");
     if(stick) termEl.scrollTop=termEl.scrollHeight;
-    // 送出進度列顯示設備最後一行輸出
-    let k=row; while(k>0 && !lines[k].trim()) k--;
+    let k=row; while(k>0 && !(lines[k]||"").trim()) k--;
     $("#sbTail").textContent=lines[k]||"";
   });
 }
@@ -1606,14 +1681,90 @@ function submitCmd(){
 }
 $("#cmdSend").onclick=submitCmd;
 F("cmd").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); submitCmd(); } });
-$("#termCopy").onclick=async()=>{ await copyText(lines.join("\n")); toast("已複製終端機內容","success",1600); };
-$("#termClear").onclick=()=>{ lines=[""]; row=0; col=0; scheduleRender(true); };
+$("#termCopy").onclick=async()=>{ await copyText(lines.map(l=>l.replace(/\s+$/,"")).join("\n")); toast("已複製終端機內容","success",1600); };
+$("#termClear").onclick=()=>{ lines=[""]; row=0; col=0; scrTop=0; scheduleRender(true); };
 
 // 設定
 $("#termSettingsBtn").onclick=()=>{ const s=$("#termSettings"); s.hidden=!s.hidden; $("#termSettingsBtn").classList.toggle("on",!s.hidden); };
 F("cfgDelay").value=cfg.delay; F("cfgEol").value=cfg.eol; F("cfgEcho").value=cfg.echo; F("cfgAt").value=cfg.atTpl; F("cfgAtEol").value=cfg.atEol;
 [["cfgDelay","delay"],["cfgEol","eol"],["cfgEcho","echo"],["cfgAtEol","atEol"]].forEach(([id,k])=>F(id).addEventListener("change",()=>{ cfg[k]=F(id).value; saveCfg(); }));
 F("cfgAt").addEventListener("input",()=>{ cfg.atTpl=F("cfgAt").value.trim()||DEFAULT_AT; saveCfg(); });
+
+// 顯示設定：字級、換行、全螢幕
+cfg.tfs = +cfg.tfs || 12; cfg.wrap = cfg.wrap==="1" ? "1" : "0";
+function applyView(){
+  termEl.style.setProperty("--tfs", cfg.tfs+"px");
+  termEl.classList.toggle("wrap", cfg.wrap==="1");
+  $("#wrapBtn").classList.toggle("on", cfg.wrap==="1");
+}
+$("#fontDown").onclick=()=>{ cfg.tfs=Math.max(8,cfg.tfs-1); saveCfg(); applyView(); scheduleRender(true); };
+$("#fontUp").onclick=()=>{ cfg.tfs=Math.min(20,cfg.tfs+1); saveCfg(); applyView(); scheduleRender(true); };
+$("#wrapBtn").onclick=()=>{ cfg.wrap = cfg.wrap==="1" ? "0" : "1"; saveCfg(); applyView(); scheduleRender(true); };
+$("#termFull").onclick=()=>{
+  const on=!document.body.classList.contains("term-full");
+  document.body.classList.toggle("term-full",on);
+  $("#termFull").classList.toggle("on",on); $("#termFull").title = on ? "離開全螢幕" : "全螢幕";
+  scheduleRender(true);
+};
+applyView();
+
+// 常用帳密 (存在這支手機)
+let creds = ls.get("rc.creds", []); if(!Array.isArray(creds)) creds=[];
+let credEditing = -1;
+const saveCreds = () => ls.set("rc.creds", creds);
+function renderCreds(){
+  $("#credList").innerHTML = creds.map((c,i)=>`
+    <div class="cred">
+      <div class="c1"><b>${esc(c.name||"未命名")}</b><span class="u">${esc(c.user)}</span>
+        <button class="btn ghost icon" data-edit="${i}" title="編輯">${icon("edit")}</button>
+        <button class="btn ghost icon danger" data-del="${i}" title="刪除">${icon("trash")}</button></div>
+      <div class="c2">
+        <button class="btn" data-send-user="${i}">送帳號</button>
+        <button class="btn" data-send-pass="${i}">送密碼</button>
+        <button class="btn primary sm" data-login="${i}">${icon("send")}登入</button>
+      </div>
+    </div>`).join("") || `<div class="empty-note">還沒有儲存帳密<br>按下方「新增帳密」加入常用的帳號密碼</div>`;
+}
+function openCredForm(i){
+  credEditing=i; const c=creds[i]||{name:"",user:"",pass:""};
+  F("credName").value=c.name; F("credUser").value=c.user; F("credPass").value=c.pass;
+  F("credPass").type="password"; $("#credShow").textContent="顯示";
+  $("#credFormWrap").hidden=false; $("#credAdd").hidden=true;
+  setTimeout(()=>F(i<0?"credName":"credUser").focus(),50);
+}
+function closeCredForm(){ $("#credFormWrap").hidden=true; $("#credAdd").hidden=false; credEditing=-1; }
+$("#credBtn").onclick=()=>{ renderCreds(); closeCredForm(); $("#credModal").classList.add("open"); };
+$("#credClose").onclick=()=>$("#credModal").classList.remove("open");
+$("#credModal").onclick=e=>{ if(e.target.id==="credModal") $("#credModal").classList.remove("open"); };
+$("#credAdd").onclick=()=>openCredForm(-1);
+$("#credFormCancel").onclick=closeCredForm;
+$("#credShow").onclick=()=>{ const p=F("credPass"); p.type = p.type==="password" ? "text" : "password"; $("#credShow").textContent = p.type==="password" ? "顯示" : "隱藏"; };
+$("#credSave").onclick=()=>{
+  const c={name:F("credName").value.trim(), user:F("credUser").value, pass:F("credPass").value};
+  if(!c.user && !c.pass) return toast("請輸入帳號或密碼","warn");
+  if(!c.name) c.name=c.user||"未命名";
+  if(credEditing>=0) creds[credEditing]=c; else creds.push(c);
+  if(!saveCreds()) return toast("儲存失敗（手機瀏覽器儲存空間不足）","error");
+  closeCredForm(); renderCreds(); toast(`已儲存「${c.name}」`,"success",1600);
+};
+// 密碼不在本機回顯
+const sendSecret = text => isConnected() ? sendBytes(encoder.encode(text+EOL[cfg.eol])) : Promise.resolve(false);
+$("#credList").onclick=async e=>{
+  const t=e.target.closest("button"); if(!t) return;
+  const d=t.dataset;
+  if(d.edit!=null) return openCredForm(+d.edit);
+  if(d.del!=null){
+    const c=creds[+d.del];
+    if(!await dialog({title:`刪除「${c.name}」？`, message:"只會從這支手機刪除。", ok:"刪除", danger:true})) return;
+    creds.splice(+d.del,1); saveCreds(); renderCreds(); return;
+  }
+  if(!isConnected()) return toast("藍牙尚未連線","warn");
+  const c=creds[+(d.sendUser ?? d.sendPass ?? d.login)];
+  if(d.sendUser!=null){ await sendLine(c.user); toast("已送出帳號","success",1200); }
+  else if(d.sendPass!=null){ await sendSecret(c.pass); toast("已送出密碼","success",1200); }
+  else { await sendLine(c.user); await sleep(800); await sendSecret(c.pass); toast(`已用「${c.name}」登入`,"success",1600); }
+  $("#credModal").classList.remove("open");
+};
 
 function showBleNotice(){
   const n=$("#termNotice"); n.hidden=false;
