@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
 <title>緊急救援</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%2334d399' d='M13 2 4 14h7l-1 8 9-12h-7z'/></svg>">
@@ -347,6 +347,9 @@ html.term-mode .brand,html.term-mode #status{display:none}   /* 終端機頁精�
 html.term-mode header{gap:8px}
 html.term-mode.kb-open header{display:none}          /* 打字時 (鍵盤打開) 隱藏標題，留空間給終端機 */
 .term-panel{position:relative}
+.term-nav{display:none;gap:2px;margin-right:4px;padding-right:6px;border-right:1px solid var(--line)}
+body.term-full .term-nav,html.kb-open .term-nav{display:flex}
+body.term-full #termDev{display:none}
 .term{overscroll-behavior:contain;touch-action:pan-x pan-y}
 .jump{position:absolute;right:14px;bottom:72px;z-index:3;display:none;box-shadow:0 8px 24px -6px rgba(0,0,0,.7);
   background:var(--panel-solid);border-color:rgba(34,211,238,.5);color:var(--accent2)}
@@ -531,6 +534,11 @@ body.term-full .app{gap:0}
   <section class="view" id="view-term">
     <div class="panel term-panel">
       <div class="adm-head">
+        <div class="term-nav" id="termNav">
+          <button class="btn ghost icon" data-go="restore" title="緊急救援"><svg class="i"><use href="#i-life"/></svg></button>
+          <button class="btn ghost icon" data-go="upgrade" title="升版"><svg class="i"><use href="#i-up"/></svg></button>
+          <button class="btn ghost icon" data-go="db" title="資料庫"><svg class="i"><use href="#i-db"/></svg></button>
+        </div>
         <h3>終端機</h3><span class="tag-n" id="termDev">未連線</span>
         <div style="margin-left:auto;display:flex;gap:4px">
           <button class="btn" id="termConnect"><svg class="i"><use href="#i-bt"/></svg><span>連線</span></button>
@@ -549,6 +557,11 @@ body.term-full .app{gap:0}
         <div class="field"><label for="cfgAt">鮑率切換指令</label><div class="input"><input id="cfgAt" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div></div>
         <div class="field"><label for="cfgAtEol">AT 指令結尾</label><div class="input sel"><select id="cfgAtEol">
           <option value="crlf">CR+LF（\r\n）</option><option value="none">不加</option><option value="cr">CR（\r）</option><option value="lf">LF（\n）</option></select></div></div>
+        <div class="field wide" style="flex-direction:row;gap:8px;flex-wrap:wrap">
+          <button class="btn" id="rawCopy"><svg class="i"><use href="#i-copy"/></svg>複製原始資料（除錯用）</button>
+          <button class="btn ghost" id="rawClear">清除原始資料</button>
+        </div>
+        <p class="note">畫面顯示怪怪的時候：先按「清除原始資料」，重現一次問題，再按「複製原始資料」貼給開發者，裡面會包含設備送出的控制碼。</p>
         <p class="note">按 9600 / 115200 時會把「鮑率切換指令」送給藍牙轉接頭。預設為 BT578 V3 的格式 <code>AT+BAUD{code}</code>（9600 送 AT+BAUD4、115200 送 AT+BAUD8，轉接頭回 +OK 即成功，斷電後仍保留）。其他轉接頭可改用 <code>{baud}</code> 代入數字。逐行送出間隔太短時，慢速設備可能會漏字。</p>
       </div>
       <div class="term-keys">
@@ -1561,7 +1574,8 @@ let follow=true, touching=false, pendingBottom=false;
 const atBottom = () => termEl.scrollHeight-termEl.scrollTop-termEl.clientHeight < 30;
 function goBottom(){ follow=true; termEl.scrollTop=termEl.scrollHeight; $("#jumpBtn").classList.remove("show"); }
 termEl.addEventListener("scroll",()=>{ if(touching || !atBottom()) { if(atBottom()) { follow=true; $("#jumpBtn").classList.remove("show"); } else follow=false; } });
-termEl.addEventListener("touchstart",()=>{ touching=true; },{passive:true});
+let focusJumps=[];   // 點輸入框後排定的「跳到最新」；使用者一碰終端機就取消
+termEl.addEventListener("touchstart",()=>{ touching=true; focusJumps.forEach(clearTimeout); focusJumps=[]; },{passive:true});
 termEl.addEventListener("touchend",()=>{ touching=false; if(atBottom()){ follow=true; $("#jumpBtn").classList.remove("show"); } },{passive:true});
 termEl.addEventListener("touchcancel",()=>{ touching=false; },{passive:true});
 function scheduleRender(forceBottom){
@@ -1639,7 +1653,9 @@ async function findChars(server){
   for(const u of SERVICES){ try{ const f=await pick([await server.getPrimaryService(u)]); if(f) return f; }catch{} }
   return null;
 }
-function onData(ev){ const t=decoder.decode(ev.target.value,{stream:true}); if(t) feed(t); }
+let rawLog="";   // 設備送來的原始資料 (除錯用，保留最後 30000 字)
+function onData(ev){ const t=decoder.decode(ev.target.value,{stream:true}); if(t){ rawLog=(rawLog+t).slice(-30000); feed(t); } }
+function escapeRaw(t){ return t.replace(/[\x00-\x1f\x7f\\]/g,c=>c==="\n"?"\\n\n":c==="\\"?"\\\\":"\\x"+c.charCodeAt(0).toString(16).padStart(2,"0")); }
 function onDisconnected(){
   rxChar=null; txChar=null; sender.stop=true;
   setBle("err","藍牙已中斷"); sysMsg("藍牙已中斷");
@@ -1731,14 +1747,17 @@ window.addEventListener("resize",fitViewport);
 // 點輸入框：一律跳到最新一行 (鍵盤彈出動畫期間多跳幾次，確保停在最底下)，才看得到目前在設備的哪一層
 F("cmd").addEventListener("focus",()=>{
   kbFocus=true; fitViewport(); goBottom();
-  [120,300,600].forEach(ms=>setTimeout(()=>{ if(kbFocus){ fitViewport(); goBottom(); } },ms));
+  focusJumps.forEach(clearTimeout);
+  focusJumps=[120,300,600].map(ms=>setTimeout(()=>{ if(kbFocus){ fitViewport(); goBottom(); } },ms));
 });
-if(window.visualViewport) visualViewport.addEventListener("resize",()=>{ if(kbFocus) requestAnimationFrame(goBottom); });
+if(window.visualViewport) visualViewport.addEventListener("resize",()=>{ if(kbFocus && follow) requestAnimationFrame(goBottom); });
 F("cmd").addEventListener("blur",()=>{ kbFocus=false; setTimeout(()=>{ window.scrollTo(0,0); fitViewport(); if(follow) goBottom(); },250); });
 fitViewport();
 $("#cmdSend").onclick=submitCmd;
 F("cmd").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); submitCmd(); } });
 $("#termCopy").onclick=async()=>{ await copyText(lines.map(l=>l.replace(/\s+$/,"")).join("\n")); toast("已複製終端機內容","success",1600); };
+$("#rawCopy").onclick=async()=>{ if(!rawLog) return toast("目前沒有原始資料","warn"); await copyText(escapeRaw(rawLog)); toast(`已複製原始資料（${rawLog.length} 字）`,"success",2000); };
+$("#rawClear").onclick=()=>{ rawLog=""; toast("已清除原始資料","info",1400); };
 $("#termClear").onclick=()=>{ lines=[""]; row=0; col=0; scrTop=0; scheduleRender(true); };
 
 // 設定
@@ -1764,6 +1783,13 @@ $("#termFull").onclick=()=>{
   scheduleRender(true);
 };
 applyView();
+// 全螢幕時的頁面切換：離開全螢幕並切到該頁
+$("#termNav").onclick=e=>{
+  const b=e.target.closest("[data-go]"); if(!b) return;
+  if(document.activeElement) document.activeElement.blur();
+  document.body.classList.remove("term-full"); $("#termFull").classList.remove("on"); $("#termFull").title="全螢幕";
+  switchTab(b.dataset.go);
+};
 
 // 常用帳密 (存在這支手機)
 let creds = ls.get("rc.creds", []); if(!Array.isArray(creds)) creds=[];
