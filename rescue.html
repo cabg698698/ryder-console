@@ -1476,7 +1476,30 @@ function scheduleRender(forceBottom){
 }
 function sysMsg(msg){ if(col!==0){ newLine(); col=0; } feed("["+msg+"]\r\n"); }
 
-const SERVICES=[0xffe0,0xfff0,0xffe5,"6e400001-b5a3-f393-e0a9-e50e24dcca9e","49535343-fe7d-4ae5-8fa9-9fafd205e455"];
+// Bluefy 只接受完整 128-bit UUID 字串 (混用 0xffe0 這種數字會直接回傳錯誤碼 2)
+const uuid16 = h => `0000${h}-0000-1000-8000-00805f9b34fb`;
+const SVC_BT578 = uuid16("ffe0");   // BT578 的串口服務，特徵值 FFE1
+const SERVICES=[SVC_BT578, uuid16("fff0"), uuid16("ffe5"), "6e400001-b5a3-f393-e0a9-e50e24dcca9e", "49535343-fe7d-4ae5-8fa9-9fafd205e455"];
+// iOS 藍牙狀態碼 → 說明 (Bluefy 失敗時常只回傳一個數字)
+function bleErrorText(e){
+  const code = typeof e==="number" ? e : (typeof e==="string" && /^\d+$/.test(e) ? +e : null);
+  if(code===3) return "Bluefy 沒有藍牙權限：請到 iPhone「設定 → 隱私權與安全性 → 藍牙」打開 Bluefy。";
+  if(code===4) return "iPhone 的藍牙是關閉的，請從控制中心打開藍牙。";
+  if(code!=null) return `藍牙還沒準備好（代碼 ${code}）。請確認：① iPhone「設定 → 隱私權與安全性 → 藍牙」有打開 Bluefy；② 控制中心的藍牙是開的；③ 把 Bluefy 完全關閉（從多工畫面滑掉）再重新開啟。`;
+  return e?.message || String(e);
+}
+async function requestBle(){
+  // 依序嘗試：全部服務 → 只有 BT578 服務 → 只列出 BT578 開頭的裝置
+  const tries=[{acceptAllDevices:true, optionalServices:SERVICES},
+               {acceptAllDevices:true, optionalServices:[SVC_BT578]},
+               {filters:[{namePrefix:"BT578"}], optionalServices:[SVC_BT578]}];
+  let last;
+  for(const opt of tries){
+    try{ return await navigator.bluetooth.requestDevice(opt); }
+    catch(e){ if(e?.name==="NotFoundError") throw e; last=e; await sleep(700); }
+  }
+  throw last;
+}
 let device=null, rxChar=null, txChar=null, connecting=false, writeChain=Promise.resolve();
 const decoder=new TextDecoder("utf-8"), encoder=new TextEncoder();
 const isConnected=()=>!!(device&&device.gatt&&device.gatt.connected&&txChar);
@@ -1516,7 +1539,7 @@ async function bleConnect(){
   if(!navigator.bluetooth){ showBleNotice(); toast("這個瀏覽器不支援藍牙，iPhone 請用 Bluefy 開啟本頁","error",5000); return; }
   connecting=true; setBle("busy","請選擇裝置…");
   try{
-    const d=await navigator.bluetooth.requestDevice({acceptAllDevices:true, optionalServices:SERVICES});
+    const d=await requestBle();
     device=d; device.addEventListener("gattserverdisconnected",onDisconnected);
     setBle("busy","連線中…");
     const server=await device.gatt.connect();
@@ -1530,7 +1553,7 @@ async function bleConnect(){
     toast("藍牙已連線："+(device.name||""),"success");
   }catch(e){
     if(e?.name==="NotFoundError") setBle("","藍牙未連線");
-    else { setBle("err","連線失敗"); sysMsg("連線失敗："+(e?.message||e)); toast("藍牙連線失敗："+(e?.message||e),"error",5000); }
+    else { const m=bleErrorText(e); setBle("err","連線失敗"); sysMsg("連線失敗："+m); toast("藍牙連線失敗："+m,"error",9000); }
   }finally{ connecting=false; }
 }
 function bleToggle(){ if(isConnected()) device.gatt.disconnect(); else bleConnect(); }
