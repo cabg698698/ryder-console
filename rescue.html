@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<title>緊急救援</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%2334d399' d='M13 2 4 14h7l-1 8 9-12h-7z'/></svg>">
+<style>
+:root{
+  --bg:#0b1020; --bg2:#0f172a;
+  --panel:rgba(22,30,52,.72); --panel-solid:#151d33; --panel-hi:rgba(34,45,76,.8);
+  --line:rgba(148,163,184,.14); --line-hi:rgba(148,163,184,.28);
+  --text:#e6ebf5; --muted:#8b98b3; --dim:#5d6a85;
+  --accent:#34d399; --accent2:#22d3ee; --warn:#fbbf24; --danger:#f87171; --violet:#a78bfa;
+  --radius:16px;
+  --mono:"Cascadia Mono","Cascadia Code",Consolas,"Courier New",monospace;
+  --sans:"Microsoft JhengHei UI","微軟正黑體","Segoe UI",system-ui,sans-serif;
+  --shadow:0 10px 30px -12px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.04) inset;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  font-family:var(--sans);color:var(--text);background:var(--bg);
+  background-image:
+    radial-gradient(1200px 600px at 10% -10%,rgba(52,211,153,.10),transparent 60%),
+    radial-gradient(900px 500px at 100% 0%,rgba(34,211,238,.10),transparent 60%),
+    radial-gradient(800px 600px at 50% 120%,rgba(167,139,250,.08),transparent 60%);
+  background-attachment:fixed;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{ /* 細格線背景 */
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(148,163,184,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.04) 1px,transparent 1px);
+  background-size:32px 32px;mask-image:radial-gradient(ellipse at 50% 0%,#000 30%,transparent 80%);
+}
+.app{position:relative;z-index:1;max-width:1800px;margin:0 auto;padding:18px 24px 32px;display:flex;flex-direction:column;gap:16px;min-height:100%}
+svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- Header ---------- */
+header{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto}
+.logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 24px -6px rgba(52,211,153,.55)}
+.logo svg{width:24px;height:24px;stroke:#062019;stroke-width:2.4}
+.brand h1{margin:0;font-size:20px;letter-spacing:.5px}
+.brand small{display:block;color:var(--muted);font-size:12px;margin-top:2px;letter-spacing:.3px}
+
+.tabs{position:relative;display:flex;padding:4px;border-radius:14px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(12px)}
+.tabs button{position:relative;z-index:1;border:0;background:none;color:var(--muted);font:600 15px var(--sans);
+  padding:9px 22px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:color .2s}
+.tabs button.active{color:#062019}
+.tabs .pill{position:absolute;top:4px;bottom:4px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  transition:left .35s cubic-bezier(.4,1.3,.5,1),width .35s cubic-bezier(.4,1.3,.5,1);box-shadow:0 6px 18px -6px rgba(34,211,238,.6)}
+
+.status{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
+.status.ok .dot{background:var(--accent);box-shadow:0 0 0 4px rgba(52,211,153,.15);animation:pulse 2.4s infinite}
+.status.err .dot{background:var(--danger);box-shadow:0 0 0 4px rgba(248,113,113,.15)}
+.status.err{color:#fca5a5;border-color:rgba(248,113,113,.35)}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(52,211,153,0)}}
+
+/* ---------- Buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line-hi);background:rgba(255,255,255,.03);
+  color:var(--text);font:600 13px var(--sans);padding:7px 12px;border-radius:9px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:rgba(255,255,255,.08);border-color:rgba(148,163,184,.45)}
+.btn:active{transform:translateY(1px)}
+.btn.icon{padding:7px;width:32px;height:32px}
+.btn.ghost{border-color:transparent;background:none;color:var(--muted)}
+.btn.ghost:hover{color:var(--text);background:rgba(255,255,255,.06)}
+.btn.primary{border:0;color:#052018;font-size:15px;padding:12px 22px;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 10px 24px -10px rgba(52,211,153,.8);position:relative;overflow:hidden}
+.btn.primary:hover{filter:brightness(1.08);box-shadow:0 12px 28px -8px rgba(52,211,153,.9)}
+.btn.primary::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);transform:translateX(-120%)}
+.btn.primary:hover::after{transition:transform .7s;transform:translateX(120%)}
+.btn.primary.loading{pointer-events:none;opacity:.8}
+.kbd{font:600 11px var(--mono);padding:2px 6px;border-radius:5px;background:rgba(5,32,24,.18);border:1px solid rgba(5,32,24,.25)}
+.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- Panel ---------- */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);backdrop-filter:blur(14px);box-shadow:var(--shadow)}
+.params{padding:16px 18px 18px}
+.params-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.params-head h2{margin:0;font-size:14px;color:var(--muted);font-weight:600;letter-spacing:1px;display:flex;align-items:center;gap:8px}
+.params-head .spacer{flex:1}
+/* 欄位依內容決定最小寬度 (由 fitFields() 設定)，空間不夠時換行，不會把文字壓到被箭頭蓋住 */
+.grid-form{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end}
+.grid-form .field{flex:1 1 150px}
+.grid-form .field.sm{flex-basis:100px}
+.grid-form .go{flex:0 0 auto}
+
+.field{display:flex;flex-direction:column;gap:6px;min-width:0;transition:opacity .25s}
+.field.disabled{opacity:.35;pointer-events:none}
+.field label{font-size:13px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px}
+.field label .tag{margin-left:auto;font:600 10.5px var(--mono);padding:1px 6px;border-radius:5px;color:var(--accent2);background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);cursor:default}
+.field label .tag.manual{color:var(--warn);background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3);cursor:pointer}
+.input{position:relative}
+.input input,.input select{width:100%;height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--line-hi);
+  background:rgba(8,12,24,.55);color:var(--text);font:500 15px var(--mono);outline:none;transition:border-color .15s,box-shadow .15s,background .15s}
+.input input::placeholder{color:var(--dim);font-family:var(--sans);font-size:13px}
+.input input:focus,.input select:focus{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(34,211,238,.18);background:rgba(8,12,24,.8)}
+.input.invalid input{border-color:var(--danger);box-shadow:0 0 0 3px rgba(248,113,113,.15)}
+.input.valid input{border-color:rgba(52,211,153,.5)}
+.input.warn input{border-color:var(--warn);box-shadow:0 0 0 3px rgba(251,191,36,.15)}
+.chip.warn{color:#fcd34d;border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.1)}
+.input select{appearance:none;cursor:pointer;padding-right:34px;font-size:14px}
+.input select option{background:var(--panel-solid);color:var(--text)}
+.input.sel::after{content:"";position:absolute;right:14px;top:50%;width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.input input[type=date]{color-scheme:dark}
+#location{text-transform:uppercase}
+
+.preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.02)}
+.chip b{font:600 12.5px var(--mono);color:var(--text)}
+.chip svg.i{width:14px;height:14px}
+
+/* 最近紀錄 */
+.recent-wrap{position:relative}
+.recent-menu{position:absolute;right:0;top:calc(100% + 6px);width:360px;max-height:360px;overflow:auto;z-index:30;padding:6px;
+  background:var(--panel-solid);border:1px solid var(--line-hi);border-radius:12px;box-shadow:0 20px 50px -10px rgba(0,0,0,.7);
+  opacity:0;transform:translateY(-6px) scale(.98);pointer-events:none;transition:all .18s}
+.recent-menu.open{opacity:1;transform:none;pointer-events:auto}
+.recent-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer}
+.recent-item:hover{background:rgba(255,255,255,.06)}
+.recent-item .r1{font:600 13px var(--mono)}
+.recent-item .r2{font-size:12px;color:var(--muted);margin-top:2px}
+.recent-item .del{margin-left:auto;opacity:0}
+.recent-item:hover .del{opacity:1}
+.empty-note{padding:16px;text-align:center;color:var(--dim);font-size:13px}
+
+/* ---------- Upgrade bar ---------- */
+.fw-bar{display:flex;align-items:end;gap:14px;flex-wrap:wrap;padding:16px 18px}
+.fw-bar .field{flex:1;min-width:260px;max-width:520px}
+
+/* ---------- Output cards ---------- */
+.view{display:none;flex-direction:column;gap:16px}
+.view.active{display:flex;animation:fadeUp .35s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.cards{display:grid;gap:16px}
+.cards.restore{grid-template-columns:minmax(0,2fr) minmax(330px,1.2fr) minmax(0,2fr)}
+.cards.upgrade{grid-template-columns:1fr 1fr}
+@media (max-width:1100px){.cards.restore,.cards.upgrade{grid-template-columns:1fr}}
+
+.card{container-type:inline-size}
+@container (max-width:440px){.card-meta{display:none}.copy-btn span{display:none}.copy-btn{min-width:0;width:32px;height:32px;padding:7px}}
+.card{--c:var(--accent);display:flex;flex-direction:column;min-height:300px;overflow:hidden;position:relative;transition:border-color .25s,transform .25s}
+.card::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--c),transparent);opacity:.8}
+.card.done{border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.card-head{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 14px;border-bottom:1px solid var(--line)}
+.step{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:none;font:700 13px var(--mono);
+  color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);border:1px solid color-mix(in srgb,var(--c) 35%,transparent);transition:all .25s}
+.card.done .step{background:var(--accent);color:#052018;border-color:var(--accent)}
+.card-title{font-weight:700;font-size:15px;line-height:1.3;min-width:0;overflow-wrap:anywhere}
+.card-meta{font-size:12px;color:var(--dim);font-family:var(--mono);white-space:nowrap}
+.card-actions{margin-left:auto;display:flex;gap:4px;align-items:center}
+.copy-btn{min-width:84px}
+.copy-btn.ok{color:#052018;background:var(--accent);border-color:var(--accent)}
+
+.code{flex:1;overflow:auto;padding:10px 0;font:14px/1.65 var(--mono);background:rgba(5,8,18,.45);counter-reset:ln;max-height:46vh}
+.code .ln{display:flex;padding:0 14px 0 0;white-space:pre;min-height:1.65em;cursor:text}
+.code .ln::before{counter-increment:ln;content:counter(ln);width:44px;flex:none;text-align:right;padding-right:14px;color:var(--dim);opacity:.6;user-select:none;font-size:12px}
+.code .ln:hover{background:rgba(255,255,255,.035)}
+.code .ln.cmt{color:#7dd3fc;opacity:.9}
+.code .ln.red{color:#ff6b6b;background:rgba(248,113,113,.08);box-shadow:inset 3px 0 0 var(--danger)}
+.code .ln.miss{color:var(--dim);font-style:italic}
+.code .var{color:var(--warn);background:rgba(251,191,36,.12);border-radius:3px}
+.code textarea{width:100%;height:100%;min-height:240px;resize:none;border:0;outline:none;background:transparent;color:var(--text);font:14px/1.65 var(--mono);padding:0 14px}
+.placeholder{flex:1;display:grid;place-items:center;text-align:center;color:var(--dim);font-size:13px;padding:24px;
+  background:repeating-linear-gradient(-45deg,transparent 0 10px,rgba(148,163,184,.025) 10px 20px)}
+.placeholder svg{width:34px;height:34px;stroke-width:1.5;margin-bottom:8px;opacity:.6}
+
+.card.flash .code{animation:flash .8s ease}
+@keyframes flash{from{background:color-mix(in srgb,var(--c) 18%,transparent)}}
+
+
+/* ---------- Modal ---------- */
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:4vh 4vw;background:rgba(3,6,14,.72);backdrop-filter:blur(6px);
+  opacity:0;pointer-events:none;transition:opacity .2s}
+.modal.open{opacity:1;pointer-events:auto}
+.modal .panel{width:min(1200px,100%);height:100%;display:flex;flex-direction:column;transform:scale(.97);transition:transform .2s;background:var(--panel-solid)}
+.modal.open .panel{transform:none}
+.modal .code{max-height:none;font-size:15px}
+
+/* ---------- 後台管理 ---------- */
+.admin{display:grid;grid-template-columns:240px 300px minmax(0,1fr);gap:16px;height:calc(100vh - 150px);min-height:520px}
+@media (max-width:1100px){.admin{grid-template-columns:200px 240px minmax(0,1fr)}}
+.adm-col{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.adm-head{display:flex;align-items:center;gap:8px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--line);min-height:56px}
+.adm-head h3{margin:0;font-size:14px;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag-n{font:600 11px var(--mono);color:var(--muted);padding:1px 7px;border-radius:999px;background:rgba(255,255,255,.06)}
+.adm-search{display:flex;align-items:center;gap:8px;margin:10px 10px 4px;padding:0 10px;border-radius:9px;border:1px solid var(--line);background:rgba(8,12,24,.5);color:var(--dim)}
+.adm-search input{flex:1;height:34px;border:0;outline:0;background:none;color:var(--text);font:13px var(--sans)}
+.adm-list{flex:1;overflow:auto;padding:6px}
+.adm-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:13.5px;border:1px solid transparent;transition:background .12s}
+.adm-item:hover{background:rgba(255,255,255,.05)}
+.adm-item.active{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.35)}
+.adm-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
+.adm-item .sub{font:11px var(--mono);color:var(--dim)}
+.adm-item .use{font-size:10.5px;padding:1px 6px;border-radius:5px;color:var(--accent);background:rgba(52,211,153,.1);white-space:nowrap}
+.adm-item .use.fw{color:var(--violet);background:rgba(167,139,250,.12)}
+.adm-item .dot-dirty{width:7px;height:7px;border-radius:50%;background:var(--warn);flex:none}
+.adm-foot{margin:6px;justify-content:flex-start;border-top:1px solid var(--line);border-radius:0 0 10px 10px;padding:12px}
+.adm-tools{display:flex;flex-direction:column;gap:2px;padding:6px;border-top:1px solid var(--line)}
+.adm-tools .btn{justify-content:flex-start;padding:9px 10px}
+/* 匯入 / 匯出對話框 */
+.imp-file{display:flex;align-items:center;gap:8px;font:600 13.5px var(--mono);padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line);word-break:break-all}
+.imp-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.imp-stats div{padding:10px 12px;border-radius:10px;background:rgba(8,12,24,.5);border:1px solid var(--line)}
+.imp-stats b{display:block;font:700 18px var(--mono);margin-top:2px}
+.imp-stats span{font-size:12px;color:var(--muted)}
+.imp-group{margin-top:2px;font-size:13px}
+.imp-group h4{margin:6px 0;font-size:13px;display:flex;align-items:center;gap:6px}
+.imp-group .names{display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow:auto}
+.imp-group .names span{font:12px var(--mono);padding:2px 8px;border-radius:6px;border:1px solid var(--line)}
+.imp-group.add h4{color:var(--accent)}.imp-group.add .names span{border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.08)}
+.imp-group.del h4{color:var(--danger)}.imp-group.del .names span{border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.08)}
+.imp-group.mod h4{color:var(--warn)}.imp-group.mod .names span{border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08)}
+.imp-same{font-size:13px;color:var(--muted);padding:8px 0}
+.imp-note{font-size:13px !important;padding:10px 12px;border-radius:10px;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.25)}
+.imp-note b{color:#fca5a5}
+.exp-opt{display:flex;align-items:flex-start;gap:14px;text-align:left;width:100%;padding:14px 16px;border-radius:12px;cursor:pointer;
+  border:1px solid var(--line-hi);background:rgba(255,255,255,.03);color:var(--text);font-family:var(--sans);transition:all .15s}
+.exp-opt:hover{border-color:var(--accent2);background:rgba(34,211,238,.07);transform:translateY(-1px)}
+.exp-opt svg{width:26px;height:26px;color:var(--accent2);margin-top:2px}
+.exp-opt b{display:flex;align-items:center;gap:8px;font-size:15px}
+.exp-opt em{font-style:normal;font-size:11px;padding:1px 7px;border-radius:999px;color:#052018;background:var(--accent)}
+.exp-opt small{display:block;margin-top:4px;font-size:12.5px;color:var(--muted);line-height:1.55}
+.btn.danger:hover{color:var(--danger);background:rgba(248,113,113,.1)}
+.adm-editor{display:flex;flex-direction:column;min-height:0;overflow:hidden;position:relative}
+.ed-head .input input{height:38px;font-weight:600}
+.var-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:12px;color:var(--dim)}
+.var-bar button{font:600 12px var(--mono);color:var(--warn);background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;padding:3px 8px;cursor:pointer;transition:all .12s}
+.var-bar button:hover{background:rgba(251,191,36,.18);transform:translateY(-1px)}
+.ed-body{flex:1;display:grid;grid-template-columns:1fr;min-height:0}
+.ed-body.split{grid-template-columns:1fr 1fr}
+.ed-wrap{display:flex;min-height:0;background:rgba(5,8,18,.45);overflow:hidden}
+.gutter{width:52px;flex:none;padding:12px 12px 12px 0;text-align:right;font:12px/1.65 var(--mono);color:var(--dim);opacity:.6;overflow:hidden;user-select:none;white-space:pre}
+.ed-wrap textarea{flex:1;border:0;outline:0;resize:none;background:transparent;color:var(--text);font:14px/1.65 var(--mono);padding:12px 14px 12px 4px;tab-size:4}
+.gutter,.ed-wrap textarea{line-height:23px}
+.ed-preview{display:none;flex-direction:column;min-height:0;border-left:1px solid var(--line)}
+.ed-body.split .ed-preview{display:flex}
+.pv-head{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line)}
+.ed-preview .code{max-height:none}
+.ed-foot{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line);flex-wrap:wrap}
+.ed-foot .hint{font-size:12px;color:var(--dim);margin-right:auto}
+.ed-foot code{font-family:var(--mono);color:var(--warn);padding:0 4px;border-radius:4px;background:rgba(251,191,36,.08)}
+.dirty{font-size:12.5px;color:var(--warn);display:flex;align-items:center;gap:6px}
+.dirty:empty{display:none}
+.btn.primary.sm{font-size:13.5px;padding:9px 16px;border-radius:10px}
+.adm-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--dim);font-size:14px;background:var(--panel-solid);z-index:2}
+.adm-empty svg{width:40px;height:40px;stroke-width:1.4;opacity:.5;margin-bottom:6px}
+.adm-empty.hide{display:none}
+.stray{margin:8px;padding:8px 10px;border-radius:8px;font-size:12px;color:#fcd34d;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3)}
+
+/* 對話框 */
+.modal .dlg{width:min(460px,100%);height:auto !important;padding:22px;display:flex;flex-direction:column;gap:12px}
+.dlg h3{margin:0;font-size:17px}
+.dlg p{margin:0;color:var(--muted);font-size:14px;line-height:1.6;white-space:pre-line}
+.btn:disabled{opacity:.35;pointer-events:none}
+.btn.on{color:var(--accent2);border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.08)}
+.dlg p:empty{display:none}
+.dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.dlg .btn.primary.danger{background:linear-gradient(135deg,#f87171,#fb923c);color:#2a0606}
+.bk-list{max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.bk-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.02)}
+.bk-item .t{font:600 13.5px var(--mono)}
+.bk-item .s{font-size:12px;color:var(--dim)}
+.bk-item .btn{margin-left:auto}
+
+/* ---------- Toast ---------- */
+.toasts{position:fixed;right:24px;bottom:24px;z-index:60;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.toast{display:flex;align-items:flex-start;gap:10px;max-width:440px;padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.5;
+  background:var(--panel-solid);border:1px solid var(--line-hi);box-shadow:0 16px 40px -10px rgba(0,0,0,.7);animation:toastIn .3s cubic-bezier(.3,1.4,.5,1)}
+.toast.out{animation:toastOut .25s forwards}
+.toast.success svg{color:var(--accent)}.toast.error{border-color:rgba(248,113,113,.45)}.toast.error svg{color:var(--danger)}.toast.warn svg{color:var(--warn)}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.96)}}
+@keyframes toastOut{to{opacity:0;transform:translateX(20px)}}
+
+footer{color:var(--dim);font-size:12px;display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:auto;padding-top:6px}
+footer span{display:inline-flex;align-items:center;gap:6px}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:rgba(148,163,184,.2);border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background-color:rgba(148,163,184,.35)}::-webkit-scrollbar-corner{background:transparent}
+
+/* =====================================================================
+   以下為手機版新增：藍牙狀態、送出、終端機、資料庫頁、手機版面
+   ===================================================================== */
+.status.ble{padding:6px 6px 6px 14px}
+.status.ble.on .dot{background:var(--accent2);box-shadow:0 0 0 4px rgba(34,211,238,.15);animation:pulse 2.4s infinite}
+.status.ble.busy .dot{background:var(--warn)}
+.status.ble.on{color:var(--text)}
+.status.ble .btn{padding:6px 10px}
+.btn.send-btn{min-width:84px;color:var(--accent2);border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.08)}
+.btn.send-btn:hover{background:rgba(34,211,238,.16)}
+/* 窄卡片：複製 / 送出只顯示圖示，讓標題有空間 (選擇器加上 .card 以蓋過 .copy-btn 的 min-width) */
+@container (max-width:440px){
+  .card .card-actions .copy-btn,.card .card-actions .send-btn{min-width:0;width:34px;height:34px;padding:7px}
+  .card .card-actions .copy-btn span,.card .card-actions .send-btn span{display:none}
+  .card .card-actions{gap:2px}
+  .card .card-head{gap:8px}
+}
+
+/* 送出對話框 */
+.modal .send-dlg{width:min(760px,100%);height:auto !important;max-height:100%;display:flex;flex-direction:column}
+.send-info{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.send-list{flex:1;overflow:auto;padding:6px 0;font:14px/1.5 var(--mono);background:rgba(5,8,18,.45)}
+.sl{display:flex;align-items:center;gap:10px;padding:5px 10px 5px 14px;border-bottom:1px solid rgba(148,163,184,.06)}
+.sl label{flex:1;display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer}
+.sl input{width:18px;height:18px;flex:none;accent-color:var(--accent)}
+.sl code{flex:1;min-width:0;white-space:pre-wrap;word-break:break-all;font:inherit}
+.sl.note code{color:#7dd3fc;opacity:.85}
+.sl.off code{opacity:.45}
+.sl.sent code::after{content:"  ✓ 已送出";color:var(--accent);font-family:var(--sans);font-size:12px}
+.sl .btn{padding:5px 10px;font-size:12.5px}
+.send-foot{display:flex;align-items:center;gap:8px;padding:12px 14px;border-top:1px solid var(--line);flex-wrap:wrap}
+.send-foot .hint{font-size:12px;color:var(--dim);margin-right:auto}
+
+/* 送出進度列 */
+.sendbar{position:fixed;left:50%;bottom:18px;z-index:55;width:min(560px,calc(100% - 24px));transform:translate(-50%,140%);transition:transform .3s cubic-bezier(.3,1.3,.5,1);
+  background:var(--panel-solid);border:1px solid rgba(34,211,238,.4);border-radius:14px;box-shadow:0 20px 50px -10px rgba(0,0,0,.75);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.sendbar:not(.show){visibility:hidden;transition:transform .3s,visibility 0s .3s}
+.sendbar.show{transform:translate(-50%,0)}
+.sendbar .row1{display:flex;align-items:center;gap:10px;font-size:13.5px}
+.sendbar .row1 b{font-family:var(--mono)}
+.sendbar .row1 .btn{margin-left:auto}
+.sendbar .bar{height:4px;border-radius:4px;background:rgba(148,163,184,.15);overflow:hidden}
+.sendbar .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s}
+.sendbar .tail{font:12.5px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.4em}
+
+/* 終端機 */
+.term-panel{display:flex;flex-direction:column;overflow:hidden;height:calc(100dvh - 150px);min-height:420px}
+.term-keys{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);overflow-x:auto;align-items:center;-webkit-overflow-scrolling:touch}
+.term-keys::-webkit-scrollbar{display:none}
+.term-keys .lbl{font-size:12px;color:var(--dim);white-space:nowrap;margin:0 2px}
+.term-keys .sep{width:1px;align-self:stretch;background:var(--line);margin:0 4px;flex:none}
+.term{flex:1;min-height:0;margin:0;padding:10px 14px;overflow:auto;background:rgba(5,8,18,.6);font:13px/1.45 var(--mono);color:var(--text);
+  white-space:pre-wrap;word-break:break-all;-webkit-user-select:text;user-select:text}
+.term-input{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.term-input input{font-size:16px !important}
+.term-settings{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end}
+.term-settings[hidden]{display:none}
+.term-settings .field{flex:1 1 180px}
+.term-settings .field.wide{flex-basis:100%}
+.term-settings .note{flex-basis:100%;font-size:12.5px;color:var(--muted);line-height:1.6;margin:0}
+.term-settings .note code{font-family:var(--mono);color:var(--warn);padding:0 4px;border-radius:4px;background:rgba(251,191,36,.08)}
+.term-notice{margin:12px;padding:12px 14px;border-radius:10px;font-size:13.5px;line-height:1.6;color:#fcd34d;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3)}
+
+/* 資料庫頁 */
+.db-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+@media (max-width:900px){.db-grid{grid-template-columns:1fr}}
+.db-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.db-actions{display:flex;gap:8px;flex-wrap:wrap}
+.howto{font-size:13.5px;color:var(--muted);line-height:1.75;margin:0;padding-left:20px}
+.howto b{color:var(--text)}
+.howto code{font-family:var(--mono);font-size:12.5px;color:var(--accent2);word-break:break-all}
+.privacy{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.6;color:var(--muted);padding:10px 12px;border-radius:10px;background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.25)}
+.privacy svg{color:var(--accent);margin-top:2px}
+.db-models .adm-list{max-height:none}
+
+/* ---------- 手機版面 ---------- */
+@media (hover:none){
+  .kbd{display:none}
+  footer .keyhint{display:none}
+  .recent-item .del{opacity:1}
+}
+@media (max-width:720px){
+  .app{padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 28px max(12px,env(safe-area-inset-left));gap:12px}
+  header{gap:10px}
+  .brand{flex:1 1 100%;margin-right:0}
+  .brand h1{font-size:18px}
+  .tabs{order:3;flex:1 1 100%;overflow-x:auto}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{flex:1;justify-content:center;padding:9px 10px;font-size:14px;gap:6px;white-space:nowrap}
+  .status{flex:1 1 auto;min-width:0;font-size:12px}
+  .status #statusText,.status #bleText{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .params{padding:14px}
+  .grid-form{gap:10px}
+  .grid-form .field{flex:1 1 130px}
+  .grid-form .field.sm{flex-basis:90px}
+  .grid-form .go{flex:1 1 100%}
+  .grid-form .go .btn{width:100%}
+  .input input,.input select{font-size:16px}
+  .recent-menu{width:min(360px,calc(100vw - 40px))}
+  .card{min-height:0}
+  .code{font-size:13px;max-height:none}
+  .card .placeholder{min-height:120px}
+  .modal{padding:12px}
+  .toasts{left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));align-items:stretch}
+  .toast{max-width:none}
+  .term-panel{height:calc(100dvh - 200px);min-height:360px}
+  .sendbar{bottom:max(12px,env(safe-area-inset-bottom))}
+}
+</style>
+</head>
+<body>
+<!-- SVG 圖示 -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="i-life" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="m5.6 5.6 3.6 3.6M14.8 14.8l3.6 3.6M14.8 9.2l3.6-3.6M5.6 18.4l3.6-3.6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+  <symbol id="i-net" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/><path d="M12 8v4M5 16v-2h14v2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-broom" viewBox="0 0 24 24"><path d="M3 21h18M5 21l2-7h10l2 7M9 14V4a3 3 0 0 1 6 0v10"/></symbol>
+  <symbol id="i-wait" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-dup" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.1 13a9 9 0 1 0 2.2-7.7L3 8"/><path d="M12 7v5l4 2"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></symbol>
+  <symbol id="i-bt" viewBox="0 0 24 24"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+</svg>
+
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo"><svg class="i"><use href="#i-bolt"/></svg></div>
+      <div><h1>緊急救援</h1><small>設備救援 · 升版 指令產生器 · 藍牙送出</small></div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <span class="pill"></span>
+      <button data-tab="restore" class="active"><svg class="i"><use href="#i-life"/></svg>緊急救援</button>
+      <button data-tab="upgrade"><svg class="i"><use href="#i-up"/></svg>升版</button>
+      <button data-tab="term"><svg class="i"><use href="#i-term"/></svg>終端機</button>
+      <button data-tab="db"><svg class="i"><use href="#i-db"/></svg>資料庫</button>
+    </nav>
+    <div class="status" id="status">
+      <span class="dot"></span><span id="statusText">讀取資料庫中…</span>
+      <button class="btn ghost icon" id="reloadBtn" title="重新讀取資料庫"><svg class="i"><use href="#i-refresh"/></svg></button>
+    </div>
+    <div class="status ble" id="bleStatus">
+      <span class="dot"></span><span id="bleText">藍牙未連線</span>
+      <button class="btn" id="bleBtn"><svg class="i"><use href="#i-bt"/></svg><span>連線</span></button>
+    </div>
+  </header>
+
+  <!-- 參數設定 -->
+  <section class="panel params" id="paramsPanel">
+    <div class="params-head">
+      <h2><svg class="i"><use href="#i-sliders"/></svg>設備參數</h2>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="clearBtn" title="清空輸入"><svg class="i"><use href="#i-broom"/></svg>清空</button>
+      <div class="recent-wrap">
+        <button class="btn" id="recentBtn"><svg class="i"><use href="#i-clock"/></svg>最近紀錄</button>
+        <div class="recent-menu" id="recentMenu"></div>
+      </div>
+    </div>
+    <div class="grid-form">
+      <div class="field sm"><label for="location">地點名</label><div class="input"><input id="location" placeholder="例：TPE" autocomplete="off" spellcheck="false" autocapitalize="characters" autocorrect="off"></div></div>
+      <div class="field sm"><label for="serial">流水號</label><div class="input"><input id="serial" placeholder="例：01" autocomplete="off" inputmode="numeric"></div></div>
+      <div class="field"><label for="ip">IP 位置</label><div class="input" id="ipWrap"><input id="ip" placeholder="10.0.0.1" autocomplete="off" inputmode="decimal"></div></div>
+      <div class="field"><label for="mask">Mask <span class="tag" id="prefixTag">/25</span></label><div class="input sel"><select id="mask"></select></div></div>
+      <div class="field"><label for="gateway">Gateway <span class="tag" id="gwTag" title="依 IP / Mask 自動計算">AUTO</span></label><div class="input"><input id="gateway" autocomplete="off" inputmode="decimal"></div></div>
+      <div class="field" id="dateField"><label for="date">備份日期</label><div class="input"><input id="date" type="date"></div></div>
+      <div class="field"><label for="device">設備型號</label><div class="input sel"><select id="device"></select></div></div>
+      <div class="field go">
+        <button class="btn primary" id="genBtn"><svg class="i"><use href="#i-bolt"/></svg><span id="genLabel">產生指令</span><span class="kbd">Ctrl+Enter</span></button>
+      </div>
+    </div>
+    <div class="preview" id="preview"></div>
+  </section>
+
+  <!-- 緊急救援 -->
+  <section class="view active" id="view-restore">
+    <div class="cards restore" id="cardsRestore"></div>
+  </section>
+
+  <!-- 升版 -->
+  <section class="view" id="view-upgrade">
+    <div class="panel fw-bar">
+      <div class="field"><label for="firmware">設備韌體版本 <span class="tag" id="fwCount">0 筆</span></label><div class="input sel"><select id="firmware"></select></div></div>
+      <div class="chip"><svg class="i"><use href="#i-info"/></svg>韌體清單來自型號「<b id="fwDevice">-</b>」的 Firmware List 區塊</div>
+    </div>
+    <div class="cards upgrade" id="cardsUpgrade"></div>
+  </section>
+
+  <!-- 終端機 -->
+  <section class="view" id="view-term">
+    <div class="panel term-panel">
+      <div class="adm-head">
+        <h3>終端機</h3><span class="tag-n" id="termDev">未連線</span>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn" id="termConnect"><svg class="i"><use href="#i-bt"/></svg><span>連線</span></button>
+          <button class="btn ghost icon" id="termSettingsBtn" title="設定"><svg class="i"><use href="#i-sliders"/></svg></button>
+        </div>
+      </div>
+      <div class="term-notice" id="termNotice" hidden></div>
+      <div class="term-settings" id="termSettings" hidden>
+        <div class="field"><label for="cfgDelay">逐行送出間隔</label><div class="input sel"><select id="cfgDelay">
+          <option value="200">0.2 秒</option><option value="500">0.5 秒</option><option value="1000">1 秒</option><option value="2000">2 秒</option></select></div></div>
+        <div class="field"><label for="cfgEol">指令結尾</label><div class="input sel"><select id="cfgEol">
+          <option value="cr">CR（\r，多數設備）</option><option value="crlf">CR+LF（\r\n）</option><option value="lf">LF（\n）</option></select></div></div>
+        <div class="field"><label for="cfgEcho">本機回顯</label><div class="input sel"><select id="cfgEcho">
+          <option value="0">關（設備會自己回顯）</option><option value="1">開</option></select></div></div>
+        <div class="field"><label for="cfgAt">鮑率切換指令</label><div class="input"><input id="cfgAt" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div></div>
+        <div class="field"><label for="cfgAtEol">AT 指令結尾</label><div class="input sel"><select id="cfgAtEol">
+          <option value="crlf">CR+LF（\r\n）</option><option value="none">不加</option><option value="cr">CR（\r）</option><option value="lf">LF（\n）</option></select></div></div>
+        <p class="note">按 9600 / 115200 時會把「鮑率切換指令」送給藍牙轉接頭，<code>{baud}</code> 會換成數字。格式請依轉接頭說明書調整。逐行送出間隔太短時，慢速設備可能會漏字。</p>
+      </div>
+      <div class="term-keys">
+        <span class="lbl">鮑率</span>
+        <button class="btn" id="baud9600">9600</button>
+        <button class="btn" id="baud115200">115200</button>
+        <span class="sep"></span>
+        <button class="btn" data-key="enter">Enter</button>
+        <button class="btn" data-key=" ">空白</button>
+        <button class="btn" data-key="\t">Tab</button>
+        <button class="btn" data-key="?">?</button>
+        <button class="btn" data-key="\x03">Ctrl+C</button>
+        <button class="btn" data-key="\x1a">Ctrl+Z</button>
+        <button class="btn" data-key="\x1b">Esc</button>
+        <button class="btn" data-key="\x1b[A">↑</button>
+        <button class="btn" data-key="\x1b[B">↓</button>
+        <span class="sep"></span>
+        <button class="btn ghost" id="termCopy"><svg class="i"><use href="#i-copy"/></svg>複製全部</button>
+        <button class="btn ghost" id="termClear"><svg class="i"><use href="#i-broom"/></svg>清除</button>
+      </div>
+      <pre class="term" id="term"></pre>
+      <div class="term-input">
+        <div class="input" style="flex:1"><input id="cmd" placeholder="輸入指令，按送出" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send"></div>
+        <button class="btn primary sm" id="cmdSend"><svg class="i"><use href="#i-send"/></svg>送出</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 資料庫 -->
+  <section class="view" id="view-db">
+    <div class="db-grid">
+      <div class="panel">
+        <div class="adm-head"><h3>指令資料庫</h3><span class="tag-n" id="dbState">未匯入</span></div>
+        <div class="db-body">
+          <div class="imp-stats" id="dbStats"></div>
+          <div class="imp-file" id="dbFile"></div>
+          <div class="db-actions">
+            <button class="btn primary sm" id="dbImport"><svg class="i"><use href="#i-upload"/></svg>匯入資料庫（.db）</button>
+            <button class="btn ghost danger" id="dbClear"><svg class="i"><use href="#i-trash"/></svg>清除手機上的資料</button>
+            <input type="file" id="importFile" hidden>
+          </div>
+          <div class="privacy"><svg class="i"><use href="#i-info"/></svg><span>指令資料（含帳密、ACL）只存在這支手機的瀏覽器裡，不會上傳到任何地方，也不在網站的程式碼中。換手機或清除瀏覽器資料後需要重新匯入。</span></div>
+          <ol class="howto">
+            <li>在電腦的「緊急救援」程式：<b>後台管理 → 匯出資料庫 → 資料庫檔（.db）</b>，存到 OneDrive。<br>或直接使用 OneDrive 裡的 <code>指令產生\Device_Command.db</code>。</li>
+            <li>在這裡按 <b>匯入資料庫</b>，從「檔案」App 的 OneDrive 選這個 .db 檔。</li>
+            <li>電腦上的指令有修改時，重新匯出、再匯入一次即可更新。</li>
+          </ol>
+        </div>
+      </div>
+      <div class="panel adm-col db-models">
+        <div class="adm-head"><h3>設備型號</h3><span class="tag-n" id="dbCount">0</span></div>
+        <div class="adm-search"><svg class="i"><use href="#i-search"/></svg><input id="dbSearch" placeholder="搜尋型號…" autocomplete="off" autocapitalize="off"></div>
+        <div class="adm-list" id="dbModels"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span class="keyhint"><span class="kbd" style="background:none;border-color:var(--line-hi)">Ctrl+Enter</span>產生指令</span>
+    <span class="keyhint"><span class="kbd" style="background:none;border-color:var(--line-hi)">Alt+1~6</span>複製對應區塊</span>
+    <span><svg class="i" style="width:14px;height:14px"><use href="#i-send"/></svg>「送出」會透過藍牙把指令傳給設備</span>
+    <span><svg class="i" style="width:14px;height:14px"><use href="#i-alert"/></svg>紅字行為需特別確認的查測結果</span>
+  </footer>
+</div>
+
+<!-- 放大檢視 -->
+<div class="modal" id="modal">
+  <div class="panel card" id="modalCard">
+    <div class="card-head">
+      <span class="step" id="modalStep"></span><span class="card-title" id="modalTitle"></span>
+      <div class="card-actions">
+        <button class="btn copy-btn" id="modalCopy"><svg class="i"><use href="#i-copy"/></svg><span>複製</span></button>
+        <button class="btn ghost icon" id="modalClose" title="關閉 (Esc)"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+    </div>
+    <div class="code" id="modalCode"></div>
+  </div>
+</div>
+<!-- 送出指令 -->
+<div class="modal" id="sendModal">
+  <div class="panel card send-dlg" id="sendCard">
+    <div class="card-head">
+      <span class="step" id="sendStep"></span><span class="card-title" id="sendTitle"></span>
+      <div class="card-actions"><button class="btn ghost icon" id="sendClose" title="關閉 (Esc)"><svg class="i"><use href="#i-x"/></svg></button></div>
+    </div>
+    <div class="send-info" id="sendInfo"></div>
+    <div class="send-list" id="sendList"></div>
+    <div class="send-foot">
+      <span class="hint">按「送」只送那一行；註解（#）與說明文字預設不勾選</span>
+      <button class="btn ghost" id="sendAll">全選</button>
+      <button class="btn ghost" id="sendNone">全不選</button>
+      <button class="btn primary sm" id="sendGo"><svg class="i"><use href="#i-send"/></svg><span id="sendGoLabel">送出勾選的行</span></button>
+    </div>
+  </div>
+</div>
+<!-- 通用對話框 (確認 / 輸入) -->
+<div class="modal" id="dlg">
+  <div class="panel dlg">
+    <h3 id="dlgTitle"></h3>
+    <p id="dlgMsg"></p>
+    <div class="input" id="dlgInputWrap"><input id="dlgInput" autocomplete="off" spellcheck="false"></div>
+    <div class="input sel" id="dlgSelectWrap"><select id="dlgSelect"></select></div>
+    <div class="dlg-actions"><button class="btn" id="dlgCancel">取消</button><button class="btn primary sm" id="dlgOk">確定</button></div>
+  </div>
+</div>
+<!-- 匯入預覽 -->
+<div class="modal" id="impModal">
+  <div class="panel dlg" style="width:min(600px,100%) !important">
+    <h3>匯入資料庫</h3>
+    <div class="imp-file" id="impFile"></div>
+    <div class="imp-stats" id="impStats"></div>
+    <div id="impDiff"></div>
+    <p class="imp-note">匯入後會<b>取代這支手機上目前的指令資料</b>。電腦上的資料庫不會受影響。</p>
+    <div class="dlg-actions"><button class="btn" id="impCancel">取消</button><button class="btn primary sm" id="impOk">確認匯入</button></div>
+  </div>
+</div>
+<!-- 送出進度 -->
+<div class="sendbar" id="sendbar">
+  <div class="row1"><svg class="i"><use href="#i-send"/></svg><span id="sbLabel"></span><b id="sbCount"></b>
+    <button class="btn" id="sbStop"><svg class="i"><use href="#i-stop"/></svg>停止</button></div>
+  <div class="bar"><i id="sbBar"></i></div>
+  <div class="tail" id="sbTail"></div>
+</div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* 極簡 SQLite 讀取器：只讀取資料表 (table b-tree) 的所有資料列，足以讀取緊急救援的 Device_Command.db */
+function readSqlite(buf) {
+  const u8 = new Uint8Array(buf);
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  const magic = new TextDecoder().decode(u8.subarray(0, 15));
+  if (magic !== "SQLite format 3") throw new Error("這不是 SQLite 資料庫檔");
+  let pageSize = dv.getUint16(16);
+  if (pageSize === 1) pageSize = 65536;
+  const usable = pageSize - u8[20];
+  const enc = dv.getUint32(56);
+  if (enc > 1) throw new Error("不支援的文字編碼（需為 UTF-8）");
+  const td = new TextDecoder("utf-8");
+  const pageCount = Math.floor(u8.length / pageSize);
+
+  function varint(p) {
+    let v = 0;
+    for (let i = 0; i < 8; i++) {
+      const b = u8[p + i];
+      v = v * 128 + (b & 0x7f);
+      if (!(b & 0x80)) return [v, i + 1];
+    }
+    return [v * 256 + u8[p + 8], 9];
+  }
+  function pageOff(n) {
+    if (n < 1 || n > pageCount) throw new Error("資料庫檔損毀（頁碼超出範圍）");
+    return (n - 1) * pageSize;
+  }
+  function payloadOf(p, size) {
+    // 依 SQLite 規格計算存在本頁的長度，其餘在 overflow 頁
+    const X = usable - 35;
+    if (size <= X) return u8.subarray(p, p + size);
+    const M = Math.floor(((usable - 12) * 32) / 255) - 23;
+    const K = M + ((size - M) % (usable - 4));
+    const local = K <= X ? K : M;
+    const out = new Uint8Array(size);
+    out.set(u8.subarray(p, p + local), 0);
+    let got = local, next = dv.getUint32(p + local), guard = 0;
+    while (got < size && next) {
+      if (++guard > pageCount) throw new Error("資料庫檔損毀（overflow 迴圈）");
+      const o = pageOff(next);
+      const n = Math.min(usable - 4, size - got);
+      out.set(u8.subarray(o + 4, o + 4 + n), got);
+      got += n;
+      next = dv.getUint32(o);
+    }
+    return out;
+  }
+  function record(bytes) {
+    const rv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let p = 0;
+    const vi = () => {
+      let v = 0;
+      for (let i = 0; i < 8; i++) { const b = bytes[p++]; v = v * 128 + (b & 0x7f); if (!(b & 0x80)) return v; }
+      return v * 256 + bytes[p++];
+    };
+    const hdrLen = vi();
+    const types = [];
+    while (p < hdrLen) types.push(vi());
+    p = hdrLen;
+    const vals = [];
+    for (const t of types) {
+      if (t === 0) vals.push(null);
+      else if (t >= 1 && t <= 6) {
+        const len = [0, 1, 2, 3, 4, 6, 8][t];
+        let v = 0, neg = bytes[p] & 0x80;
+        for (let i = 0; i < len; i++) v = v * 256 + bytes[p + i];
+        if (neg) v -= 2 ** (len * 8);
+        vals.push(v); p += len;
+      } else if (t === 7) { vals.push(rv.getFloat64(p)); p += 8; }
+      else if (t === 8) vals.push(0);
+      else if (t === 9) vals.push(1);
+      else if (t >= 12) {
+        const len = t % 2 ? (t - 13) / 2 : (t - 12) / 2;
+        const sl = bytes.subarray(p, p + len);
+        vals.push(t % 2 ? td.decode(sl) : sl.slice());
+        p += len;
+      } else vals.push(null);
+    }
+    return vals;
+  }
+  function walk(page, rows, depth) {
+    if (depth > 40) throw new Error("資料庫檔損毀（b-tree 太深）");
+    const base = pageOff(page);
+    const h = page === 1 ? base + 100 : base;
+    const type = u8[h];
+    const cells = dv.getUint16(h + 3);
+    if (type === 0x0d) {
+      for (let i = 0; i < cells; i++) {
+        let p = base + dv.getUint16(h + 8 + i * 2);
+        const [size, a] = varint(p); p += a;
+        const [rowid, b] = varint(p); p += b;
+        rows.push({ rowid, vals: record(payloadOf(p, size)) });
+      }
+    } else if (type === 0x05) {
+      for (let i = 0; i < cells; i++) {
+        const p = base + dv.getUint16(h + 12 + i * 2);
+        walk(dv.getUint32(p), rows, depth + 1);
+      }
+      walk(dv.getUint32(h + 8), rows, depth + 1);
+    } else {
+      throw new Error("資料庫檔損毀（未知的頁面類型）");
+    }
+    return rows;
+  }
+  function columnsOf(sql) {
+    const body = sql.slice(sql.indexOf("(") + 1, sql.lastIndexOf(")"));
+    const parts = [];
+    let depth = 0, cur = "";
+    for (const ch of body) {
+      if (ch === "(") depth++;
+      if (ch === ")") depth--;
+      if (ch === "," && depth === 0) { parts.push(cur); cur = ""; } else cur += ch;
+    }
+    parts.push(cur);
+    const cols = [];
+    for (const part of parts) {
+      const s = part.trim();
+      if (!s || /^(PRIMARY|UNIQUE|CHECK|FOREIGN|CONSTRAINT)\b/i.test(s)) continue;
+      const m = s.match(/^["`\[]?([^"`\]\s]+)["`\]]?\s*(.*)$/s);
+      cols.push({ name: m[1], ipk: /^INTEGER\s+PRIMARY\s+KEY/i.test(m[2]) });
+    }
+    return cols;
+  }
+  const master = walk(1, [], 0).map(r => ({ type: r.vals[0], name: r.vals[1], root: r.vals[3], sql: r.vals[4] }));
+  return {
+    tables: master.filter(m => m.type === "table").map(m => m.name),
+    all(table) {
+      const m = master.find(x => x.type === "table" && String(x.name).toLowerCase() === table.toLowerCase());
+      if (!m) return null;
+      const cols = columnsOf(m.sql);
+      return walk(m.root, [], 0).map(r => {
+        const o = {};
+        cols.forEach((c, i) => { o[c.name] = c.ipk && r.vals[i] == null ? r.rowid : (r.vals[i] ?? null); });
+        return o;
+      });
+    },
+  };
+}
+
+/* 讀取緊急救援資料庫 → {devices:[{name, blocks:[{name, content}]}], updated} */
+function loadRescueDb(buf) {
+  const db = readSqlite(buf);
+  const devs = db.all("devices"), blks = db.all("blocks");
+  if (!devs || !blks) throw new Error("這不是緊急救援的資料庫檔（缺少 devices / blocks 資料表）");
+  const meta = db.all("meta") || [];
+  const updated = (meta.find(m => m.key === "updated_at") || {}).value || "";
+  const byOrder = (a, b) => a.sort_order - b.sort_order || a.id - b.id;
+  const devices = devs.sort(byOrder).map(d => ({ id: d.id, name: String(d.name), blocks: [] }));
+  const byId = new Map(devices.map(d => [d.id, d]));
+  blks.sort(byOrder).forEach(b => {
+    const d = byId.get(b.device_id);
+    if (d) d.blocks.push({ name: String(b.name), content: String(b.content ?? "") });
+  });
+  return { devices: devices.map(d => ({ name: d.name, blocks: d.blocks })), updated: String(updated) };
+}
+</script>
+<script>
+/* 指令產生邏輯：對應 緊急救援_web.py 的 /api/status、/api/firmware、/api/restore、/api/upgrade */
+const RESTORE_BLOCKS = {
+  setup_ip: ["Setup IP"],
+  ping: ["Setup Ping"],
+  restore: ["Setup Restore"],
+  account: ["Setup Account"],
+  acl: ["Setup ACL"],
+  check: ["Setup Check"],
+};
+const UPGRADE_BLOCKS = {
+  upgrade: ["Setup Firmware"],
+  upgrade_check: ["Setup Check Firmware", "Check Firmware", "Setup Firmware Check"],
+};
+const MISSING_BLOCK = "此型號沒有設定這個區塊的內容。";
+
+class ApiError extends Error {}
+
+function pyStrip(s) { return String(s ?? "").replace(/^\s+|\s+$/g, ""); }
+
+function firstBlock(blocks, keywords) {
+  const byName = {};
+  for (const b of blocks) byName[b.name.toLowerCase()] = b.content;  // 同名時以後者為準 (與 Python dict 相同)
+  for (const k of keywords) {
+    const content = pyStrip(byName[k.toLowerCase()] ?? "");
+    if (content) return content;
+  }
+  return "";
+}
+
+function maskToPrefix(mask) {
+  // 對應 ipaddress.IPv4Network("0.0.0.0/<mask>").prefixlen；不合法時回傳 ""
+  const m = String(mask);
+  if (/^\d+$/.test(m)) { const n = +m; return n >= 0 && n <= 32 && String(n) === m.replace(/^0+(?=\d)/, "") ? String(n) : ""; }
+  const parts = m.split(".");
+  if (parts.length !== 4 || !parts.every(p => /^\d{1,3}$/.test(p) && +p <= 255 && (p === "0" || p[0] !== "0"))) return "";
+  const bits = parts.map(p => (+p).toString(2).padStart(8, "0")).join("");
+  if (/^1*0*$/.test(bits)) return String(bits.indexOf("0") === -1 ? 32 : bits.indexOf("0"));
+  if (/^0*1*$/.test(bits)) return String(bits.indexOf("1") === -1 ? 0 : bits.indexOf("1"));  // hostmask 形式
+  return "";
+}
+
+function buildVars(data) {
+  const ip = pyStrip(data.ip), mask = pyStrip(data.mask);
+  return {
+    ip,
+    mask,
+    mask_prefix: maskToPrefix(mask),
+    gateway: pyStrip(data.gateway),
+    folder_route: ip.includes(".") ? ip.slice(0, ip.lastIndexOf(".")) : ip,
+    location: pyStrip(data.location).toUpperCase(),
+    serial: pyStrip(data.serial),
+  };
+}
+
+function render(template, variables) {
+  if (!template) return MISSING_BLOCK;
+  const out = template.replace(/\[([\p{L}\p{N}_\p{Mn}\p{Pc}]+)\]/gu, (m, k) =>
+    Object.prototype.hasOwnProperty.call(variables, k) ? variables[k] : m);
+  return out.split("$").join("\n");
+}
+
+function deviceBlocks(devices, name) {
+  const d = devices.find(x => x.name === name);
+  if (!d) throw new ApiError(`資料庫中沒有「${name}」這個型號！`);
+  if (!d.blocks.some(b => pyStrip(b.content))) throw new ApiError(`型號「${name}」沒有任何指令內容！`);
+  return d.blocks;
+}
+
+function genRestore(devices, data) {
+  const date = pyStrip(data.date).split("-");
+  if (date.length !== 3 || !date.every(Boolean)) throw new ApiError("日期輸入錯誤");
+  const blocks = deviceBlocks(devices, String(data.device ?? ""));
+  const found = {};
+  for (const [k, kws] of Object.entries(RESTORE_BLOCKS)) found[k] = firstBlock(blocks, kws);
+  if (!Object.values(found).some(Boolean)) throw new ApiError(`型號「${data.device}」找不到任何救援用的區塊（Setup IP、Setup Check…）！`);
+  const v = buildVars(data);
+  Object.assign(v, { year: date[0], month: date[1], day: date[2] });
+  const results = {};
+  for (const [k, t] of Object.entries(found)) results[k] = render(t, v);
+  return { results };
+}
+
+function genUpgrade(devices, data) {
+  const fw = pyStrip(data.firmware);
+  if (!fw) throw new ApiError("尚未選擇任何韌體版本！請到後台確認此型號有 Firmware List 區塊。");
+  const blocks = deviceBlocks(devices, String(data.device ?? ""));
+  const found = {};
+  for (const [k, kws] of Object.entries(UPGRADE_BLOCKS)) found[k] = firstBlock(blocks, kws);
+  if (!Object.values(found).some(Boolean)) throw new ApiError(`型號「${data.device}」找不到 Setup Firmware 或 Setup Firmware Check 區塊！`);
+  const v = buildVars(data);
+  v.firmware = fw;
+  const results = {};
+  for (const [k, t] of Object.entries(found)) results[k] = render(t, v);
+  return { results };
+}
+
+function firmwareList(devices, name) {
+  const d = devices.find(x => x.name === name);
+  const fw = d ? firstBlock(d.blocks, ["Firmware List"]) : "";
+  return { firmware: fw.split("\n").map(pyStrip).filter(Boolean) };
+}
+</script>
+<script>
+const $ = s => document.querySelector(s);
+const icon = id => `<svg class="i"><use href="#i-${id}"/></svg>`;
+const MISSING = "此型號沒有設定這個區塊的內容。";
+const MASKS = ["255.255.255.128","255.255.255.192","255.255.255.224","255.255.255.240","255.255.255.248","255.255.255.252"];
+
+const CARDS = {
+  restore: [
+    {key:"setup_ip", title:"回覆出廠值與貼IP",   color:"#34d399", hl:false},
+    {key:"ping",     title:"Ping網管與rinos",    color:"#22d3ee", hl:false},
+    {key:"restore",  title:"restore與backup指令", color:"#60a5fa", hl:false},
+    {key:"account",  title:"設備登入帳密",        color:"#a78bfa", hl:false},
+    {key:"acl",      title:"ACL設定",             color:"#f472b6", hl:false},
+    {key:"check",    title:"restore後查測指令",   color:"#fbbf24", hl:true},
+  ],
+  upgrade: [
+    {key:"upgrade",       title:"升版指令",     color:"#34d399", hl:false},
+    {key:"upgrade_check", title:"升版檢查指令", color:"#fbbf24", hl:true},
+  ],
+};
+
+const state = { tab:"restore", results:{restore:{}, upgrade:{}}, done:{restore:new Set(), upgrade:new Set()}, gwAuto:true, vars:{} };
+
+/* ---------------- 本機儲存 ---------------- */
+const ls = {
+  get(k, d){ try{ const v=localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch{ return false; } },
+  del(k){ try{ localStorage.removeItem(k); }catch{} },
+};
+const DB = { data: ls.get("rc.db", null) };   // {devices, updated, filename, importedAt}
+
+/* ---------------- 工具 ---------------- */
+function toast(msg, type="success", ms=2600){
+  const ic = {success:"check", error:"alert", warn:"alert", info:"info"}[type];
+  const el = document.createElement("div");
+  el.className = `toast ${type}`;
+  el.innerHTML = `${icon(ic)}<div></div>`;
+  el.lastChild.textContent = msg;
+  $("#toasts").appendChild(el);
+  setTimeout(()=>{el.classList.add("out"); el.addEventListener("animationend",()=>el.remove());}, ms);
+}
+/* 與電腦版相同的 API 介面，改在手機上用匯入的資料庫計算 */
+async function api(path, body){
+  const [p, q=""] = path.split("?");
+  const devices = DB.data?.devices || [];
+  if(p==="/api/status"){
+    const updated = DB.data?.updated || "";
+    return { ok:devices.length>0, error: devices.length ? "" : "尚未匯入指令資料庫，請到「資料庫」頁匯入。",
+             sheets:devices.length, modified:updated.slice(0,16), devices:devices.map(d=>d.name) };
+  }
+  if(p==="/api/firmware") return firmwareList(devices, new URLSearchParams(q).get("device")||"");
+  if(!devices.length) throw new Error("尚未匯入指令資料庫，請到「資料庫」頁匯入 Device_Command.db");
+  if(p==="/api/restore") return genRestore(devices, body||{});
+  if(p==="/api/upgrade") return genUpgrade(devices, body||{});
+  throw new Error("未知的功能："+p);
+}
+async function copyText(text){
+  try{ await navigator.clipboard.writeText(text); }
+  catch{ const t=document.createElement("textarea"); t.value=text; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+}
+const esc = s => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+const ipToInt = ip => ip.split(".").reduce((a,o)=>(a*256)+(+o),0);
+const intToIp = n => [24,16,8,0].map(s=>Math.floor(n/2**s)%256).join(".");
+const validIp = ip => /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(ip);
+const maskPrefix = m => m.split(".").map(o=>(+o).toString(2)).join("").split("1").length-1;
+
+/* ---------------- 表單 ---------------- */
+const F = id => document.getElementById(id);
+
+function yesterday(){ const d=new Date(Date.now()-864e5); return d.toLocaleDateString("sv-SE"); }
+
+function calcNet(){
+  const ip=F("ip").value.trim(), mask=F("mask").value, p=maskPrefix(mask);
+  $("#prefixTag").textContent="/"+p;
+  const wrap=$("#ipWrap");
+  wrap.classList.toggle("invalid", ip.length>0 && !validIp(ip) && ip.split(".").length===4 && !ip.endsWith("."));
+  let net=null; const warns=[];
+  if(validIp(ip)){
+    const size=2**(32-p), base=Math.floor(ipToInt(ip)/size)*size;
+    net={network:intToIp(base), broadcast:intToIp(base+size-1), gw:intToIp(base+size-2), hosts:size-2, prefix:p};
+    if(state.gwAuto) F("gateway").value=net.gw;
+    if(ip===net.network) warns.push("IP 是網路位址，不能當設備 IP");
+    else if(ip===net.broadcast) warns.push("IP 是廣播位址，不能當設備 IP");
+    const gw=F("gateway").value.trim();
+    if(gw && ip===gw) warns.push("IP 與 Gateway 相同");
+    if(gw && !state.gwAuto){
+      if(!validIp(gw)) warns.push("Gateway 格式不正確");
+      else if(Math.floor(ipToInt(gw)/size)*size!==base) warns.push(`Gateway 不在 ${net.network}/${p} 網段內`);
+      else if(gw===net.network||gw===net.broadcast) warns.push("Gateway 是網路/廣播位址");
+    }
+  }
+  wrap.classList.toggle("valid", validIp(ip) && !warns.length);
+  wrap.classList.toggle("warn", warns.length>0);
+  state.netWarnings=warns;
+  renderPreview(net);
+  return net;
+}
+// 依最長的內容設定欄位最小寬度 (手機上不超過螢幕寬度)
+function fitFields(){
+  const ctx = (fitFields.ctx ||= document.createElement("canvas").getContext("2d"));
+  const maxW = Math.max(120, document.querySelector(".grid-form").clientWidth || window.innerWidth-48);
+  const fit = (el, texts, extra=0) => {
+    if(!el) return;
+    const cs = getComputedStyle(el);
+    ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const w = Math.max(0, ...texts.map(t=>ctx.measureText(t).width));
+    const box = parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight)+parseFloat(cs.borderLeftWidth)+parseFloat(cs.borderRightWidth);
+    el.closest(".field").style.minWidth = Math.min(Math.ceil(w + box + extra + 6), el.closest(".fw-bar") ? 9999 : maxW) + "px";
+  };
+  const opts = id => [...F(id).options].map(o=>o.text);
+  fit(F("mask"), opts("mask"));
+  fit(F("device"), opts("device"));
+  fit(F("firmware"), opts("firmware"));
+  fit(F("ip"), ["255.255.255.255"]);
+  fit(F("gateway"), ["255.255.255.255"]);
+  fit(F("date"), ["0000/00/00"], 34);
+  const fwField = F("firmware").closest(".field");
+  fwField.style.minWidth = Math.min(parseFloat(fwField.style.minWidth)||0, window.innerWidth-60) + "px";
+}
+function setGwAuto(on){
+  state.gwAuto=on;
+  const t=$("#gwTag");
+  t.textContent = on ? "AUTO" : "手動 ↺";
+  t.classList.toggle("manual", !on);
+  t.title = on ? "依 IP / Mask 自動計算" : "點擊恢復自動計算";
+  if(on) calcNet();
+}
+function restoreGateway(saved){
+  setGwAuto(true);
+  if(saved && saved!==F("gateway").value){ F("gateway").value=saved; setGwAuto(false); calcNet(); }
+}
+function renderPreview(net){
+  const loc=F("location").value.trim().toUpperCase(), ser=F("serial").value.trim(), ip=F("ip").value.trim();
+  const chips=(state.netWarnings||[]).map(w=>`<span class="chip warn">${icon("alert")}${esc(w)}</span>`);
+  if(loc||ser) chips.push(`${icon("term")}主機名稱 <b>${esc(loc)}-${esc(ser)}</b>`);
+  if(net){
+    chips.push(`${icon("net")}子網 <b>${net.network}/${net.prefix}</b>`);
+    chips.push(`廣播 <b>${net.broadcast}</b>`);
+    chips.push(`可用主機 <b>${net.hosts}</b>`);
+    chips.push(`TFTP 路徑 <b>/${esc(ip.split(".").slice(0,3).join("."))}/</b>`);
+  }
+  if(state.tab==="restore" && F("date").value){
+    const [y,m,d]=F("date").value.split("-");
+    if(ip) chips.push(`備份檔 <b>${esc(ip)}_${y}_${m}_${d}.cfg</b>`);
+  }
+  $("#preview").innerHTML = chips.map(c=>c.startsWith("<span")?c:`<span class="chip">${c}</span>`).join("") ||
+    `<span class="chip">${icon("info")}輸入 IP 後將自動計算 Gateway 與網段資訊</span>`;
+}
+function formData(){
+  return { location:F("location").value.trim().toUpperCase(), serial:F("serial").value.trim(), ip:F("ip").value.trim(),
+           mask:F("mask").value, gateway:F("gateway").value.trim(), date:F("date").value, device:F("device").value, firmware:F("firmware").value };
+}
+function saveForm(){
+  const d=formData(); d.gwAuto=state.gwAuto;
+  ls.set("msan.form", d);
+}
+function loadForm(){
+  const d=ls.get("msan.form", {}) || {};
+  ["location","serial","ip","gateway"].forEach(k=>{ if(d[k]!=null) F(k).value=d[k]; });
+  if(MASKS.includes(d.mask)) F("mask").value=d.mask;
+  state.savedDevice=d.device;
+  state.gwAuto = d.gwAuto!==false;
+}
+
+/* ---------------- 最近紀錄 ---------------- */
+const getRecent = () => { const l=ls.get("msan.recent", []); return Array.isArray(l) ? l : []; };
+function pushRecent(d){
+  const item={location:d.location, serial:d.serial, ip:d.ip, mask:d.mask, gateway:d.gateway, device:d.device, t:Date.now()};
+  const list=getRecent().filter(r=>!(r.ip===item.ip && r.location===item.location && r.serial===item.serial && r.device===item.device));
+  list.unshift(item);
+  ls.set("msan.recent", list.slice(0,12));
+}
+function renderRecent(){
+  const list=getRecent(), m=$("#recentMenu");
+  if(!list.length){ m.innerHTML=`<div class="empty-note">尚無紀錄<br>產生指令後會自動保存</div>`; return; }
+  m.innerHTML=list.map((r,i)=>`<div class="recent-item" data-i="${i}">
+      <div><div class="r1">${esc(r.location||"—")}-${esc(r.serial||"—")} · ${esc(r.ip||"—")}</div>
+      <div class="r2">${esc(r.device)} · /${maskPrefix(r.mask)} · ${new Date(r.t).toLocaleString("zh-TW",{hour12:false,month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})}</div></div>
+      <button class="btn ghost icon del" data-del="${i}" title="刪除">${icon("x")}</button></div>`).join("");
+}
+$("#recentBtn").onclick=e=>{ e.stopPropagation(); renderRecent(); $("#recentMenu").classList.toggle("open"); };
+document.addEventListener("click",e=>{ if(!e.target.closest(".recent-wrap")) $("#recentMenu").classList.remove("open"); });
+$("#recentMenu").onclick=e=>{
+  const del=e.target.closest("[data-del]");
+  if(del){ e.stopPropagation(); const l=getRecent(); l.splice(+del.dataset.del,1); ls.set("msan.recent",l); renderRecent(); return; }
+  const it=e.target.closest(".recent-item"); if(!it) return;
+  const r=getRecent()[+it.dataset.i];
+  ["location","serial","ip"].forEach(k=>F(k).value=r[k]||"");
+  F("mask").value=r.mask;
+  if([...F("device").options].some(o=>o.value===r.device)){ F("device").value=r.device; onDeviceChange(); }
+  restoreGateway(r.gateway); saveForm();
+  $("#recentMenu").classList.remove("open");
+  toast(`已套用 ${r.location}-${r.serial}`,"info",1600);
+};
+$("#clearBtn").onclick=()=>{
+  ["location","serial","ip","gateway"].forEach(k=>F(k).value="");
+  F("date").value=yesterday(); setGwAuto(true); calcNet(); saveForm(); F("location").focus();
+};
+
+/* ---------------- 卡片 ---------------- */
+function buildCards(tab){
+  const host = tab==="restore" ? $("#cardsRestore") : $("#cardsUpgrade");
+  host.innerHTML = CARDS[tab].map((c,i)=>`
+    <article class="panel card" id="card-${c.key}" style="--c:${c.color}">
+      <div class="card-head">
+        <span class="step">${i+1}</span>
+        <span class="card-title">${c.title}</span>
+        <span class="card-meta" data-meta></span>
+        <div class="card-actions">
+          <button class="btn ghost icon" data-act="edit" title="編輯">${icon("edit")}</button>
+          <button class="btn ghost icon" data-act="expand" title="放大檢視">${icon("expand")}</button>
+          <button class="btn copy-btn" data-act="copy">${icon("copy")}<span>複製</span></button>
+          <button class="btn send-btn" data-act="send" title="透過藍牙送出">${icon("send")}<span>送出</span></button>
+        </div>
+      </div>
+      <div class="placeholder"><div>${icon("wait")}<br>設定參數後按下「產生指令」</div></div>
+    </article>`).join("");
+  host.querySelectorAll(".card").forEach((el,i)=>{
+    const c=CARDS[tab][i];
+    el.querySelector('[data-act="copy"]').onclick=()=>copyCard(tab,c.key);
+    el.querySelector('[data-act="expand"]').onclick=()=>openModal(tab,c,i);
+    el.querySelector('[data-act="edit"]').onclick=()=>toggleEdit(tab,c,el);
+    el.querySelector('[data-act="send"]').onclick=()=>openSend(tab,c,i);
+  });
+}
+
+function highlightLines(text, hl){
+  // 與原版相同：含 * 的行開始標紅，直到遇到含 # 或 } 的行為止
+  let red=false;
+  return text.split("\n").map(line=>{
+    if(hl){ if(line.includes("*")) red=true; else if(line.includes("#")||line.includes("}")) red=false; }
+    let cls = red ? "red" : (/^\s*#/.test(line) ? "cmt" : "");
+    if(text===MISSING) cls="miss";
+    const body = esc(line).replace(/\[\w+\]/g, m=>`<span class="var" title="未定義的變數">${m}</span>`);
+    return `<div class="ln ${cls}">${body}</div>`;
+  }).join("");
+}
+
+function renderCard(tab, key, flash){
+  const c=CARDS[tab].find(x=>x.key===key), el=$(`#card-${key}`), text=state.results[tab][key];
+  if(text==null) return;
+  const old=el.querySelector(".code,.placeholder");
+  const code=document.createElement("div");
+  code.className="code"; code.innerHTML=highlightLines(text, c.hl);
+  old.replaceWith(code);
+  const lines = text===MISSING ? 0 : text.split("\n").length;
+  el.querySelector("[data-meta]").textContent = lines ? `${lines} 行` : "無內容";
+  el.classList.toggle("done", state.done[tab].has(key));
+  const eb=el.querySelector('[data-act="edit"]'); eb.innerHTML=icon("edit"); eb.title="編輯";
+  if(flash){ el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+}
+
+function toggleEdit(tab,c,el){
+  const text=state.results[tab][c.key];
+  if(text==null) return toast("請先產生指令","warn");
+  const code=el.querySelector(".code"), btn=el.querySelector('[data-act="edit"]');
+  const ta=code.querySelector("textarea");
+  if(ta){
+    state.results[tab][c.key]=ta.value; renderCard(tab,c.key);
+    btn.innerHTML=icon("edit"); btn.title="編輯"; toast("已套用修改","info",1400);
+  }else{
+    code.innerHTML=""; const t=document.createElement("textarea"); t.value=text; t.spellcheck=false;
+    t.setAttribute("autocapitalize","off"); t.setAttribute("autocorrect","off");
+    code.appendChild(t); t.focus();
+    btn.innerHTML=icon("check"); btn.title="完成編輯";
+  }
+}
+function syncEdit(tab,key){
+  const ta=$(`#card-${key}`)?.querySelector("textarea");
+  if(ta) state.results[tab][key]=ta.value;
+}
+
+async function copyCard(tab,key){
+  const el=$(`#card-${key}`);
+  syncEdit(tab,key);
+  const text=state.results[tab][key];
+  if(!text || text===MISSING || !text.trim()) return toast("此區塊沒有可複製的內容","warn");
+  await copyText(text);
+  state.done[tab].add(key);
+  el.classList.add("done");
+  const b=el.querySelector('[data-act="copy"]');
+  b.classList.add("ok"); b.innerHTML=`${icon("check")}<span>已複製</span>`;
+  setTimeout(()=>{ b.classList.remove("ok"); b.innerHTML=`${icon("copy")}<span>複製</span>`; },1500);
+  toast(`已複製「${CARDS[tab].find(c=>c.key===key).title}」`,"success",1600);
+}
+
+/* ---------------- Modal ---------------- */
+let modalCtx=null;
+function openModal(tab,c,i){
+  syncEdit(tab,c.key);
+  const text=state.results[tab][c.key];
+  if(text==null) return toast("請先產生指令","warn");
+  modalCtx={tab,key:c.key};
+  $("#modalCard").style.setProperty("--c",c.color);
+  $("#modalStep").textContent=i+1; $("#modalTitle").textContent=c.title;
+  $("#modalCode").innerHTML=highlightLines(text,c.hl);
+  $("#modal").classList.add("open");
+}
+const closeModal=()=>$("#modal").classList.remove("open");
+$("#modalClose").onclick=closeModal;
+$("#modal").onclick=e=>{ if(e.target.id==="modal") closeModal(); };
+$("#modalCopy").onclick=()=>modalCtx && copyCard(modalCtx.tab,modalCtx.key);
+
+/* ---------------- Tabs ---------------- */
+function movePill(){
+  const b=$("#tabs button.active"), p=$("#tabs .pill");
+  if(!b) return;
+  p.style.left=b.offsetLeft+"px"; p.style.width=b.offsetWidth+"px";
+}
+function switchTab(tab){
+  state.tab=tab;
+  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
+  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+tab));
+  const gen = tab==="restore" || tab==="upgrade";
+  $("#paramsPanel").style.display = gen ? "" : "none";
+  document.querySelector("footer").style.display = gen ? "" : "none";
+  $("#dateField").classList.toggle("disabled",tab!=="restore");
+  $("#genLabel").textContent = tab==="restore" ? "產生指令" : "升版指令產生";
+  movePill(); calcNet();
+  if(tab==="db") renderDbView();
+  if(tab==="term"){ scheduleRender(true); }
+  ls.set("msan.tab",tab);
+}
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+window.addEventListener("resize",()=>{ movePill(); fitFields(); });
+
+/* ---------------- 資料載入 ---------------- */
+async function loadStatus(showToast){
+  const s=await api("/api/status");
+  const st=$("#status");
+  st.classList.toggle("ok",s.ok); st.classList.toggle("err",!s.ok);
+  $("#statusText").textContent = s.ok ? `指令資料庫 · ${s.sheets} 個型號 · 更新 ${s.modified}` : s.error;
+  st.title = s.ok ? "指令資料庫（可在「資料庫」頁重新匯入）" : s.error;
+  const cur=F("device").value || state.savedDevice;
+  F("device").innerHTML=s.devices.map(d=>`<option>${esc(d)}</option>`).join("");
+  if(s.devices.includes(cur)) F("device").value=cur;
+  await onDeviceChange();
+  if(showToast) s.ok ? toast("資料庫已重新讀取","success",1600) : toast(s.error,"error",5000);
+}
+async function onDeviceChange(){
+  const dev=F("device").value;
+  $("#fwDevice").textContent=dev || "-";
+  try{
+    const {firmware}=await api("/api/firmware?device="+encodeURIComponent(dev));
+    F("firmware").innerHTML = firmware.length ? firmware.map(f=>`<option>${esc(f)}</option>`).join("") : `<option value="">（無韌體清單）</option>`;
+    $("#fwCount").textContent=`${firmware.length} 筆`;
+    const saved=ls.get("msan.form",{})?.firmware;
+    if(saved && firmware.includes(saved)) F("firmware").value=saved;
+    fitFields();
+  }catch(e){ toast(e.message,"error"); }
+  saveForm();
+}
+$("#reloadBtn").onclick=async()=>{
+  const ic=$("#reloadBtn svg"); ic.classList.add("spin");
+  DB.data = ls.get("rc.db", null);
+  try{ await loadStatus(true); }catch(e){ toast(e.message,"error"); }
+  setTimeout(()=>ic.classList.remove("spin"),400);
+};
+
+/* ---------------- 產生指令 ---------------- */
+async function generate(){
+  const d=formData(), tab=state.tab, btn=$("#genBtn");
+  if(tab!=="restore" && tab!=="upgrade") return;
+  if(!DB.data?.devices?.length){ toast("尚未匯入指令資料庫，請先到「資料庫」頁匯入","warn",4000); return switchTab("db"); }
+  if(d.ip && !validIp(d.ip)) toast("IP 格式看起來不正確，仍將產生指令","warn");
+  else if(state.netWarnings?.length) toast("請確認："+state.netWarnings.join("、"),"warn",4500);
+  if(tab==="restore" && !d.date) return toast("日期輸入錯誤","error");
+  if(tab==="upgrade" && !d.firmware) return toast("尚未選擇任何韌體版本！請到電腦版後台確認此型號有 Firmware List 區塊。","warn",4000);
+  btn.classList.add("loading");
+  try{
+    const {results}=await api("/api/"+tab, d);
+    state.results[tab]=results;
+    state.done[tab].clear();
+    Object.keys(results).forEach((k,i)=>setTimeout(()=>renderCard(tab,k,true), i*60));
+    pushRecent(d); saveForm();
+    toast(tab==="restore" ? `已產生 ${d.device} 緊急救援指令` : `已產生 ${d.device} 升版指令`,"success");
+  }catch(e){ toast(e.message,"error",5000); }
+  finally{ btn.classList.remove("loading"); }
+}
+$("#genBtn").onclick=generate;
+
+/* ---------------- 事件 ---------------- */
+F("mask").innerHTML=MASKS.map(m=>`<option value="${m}">${m}</option>`).join("");
+F("location").addEventListener("input",e=>{ const p=e.target.selectionStart; e.target.value=e.target.value.toUpperCase(); e.target.setSelectionRange(p,p); });
+["location","serial"].forEach(k=>F(k).addEventListener("input",()=>{calcNet();saveForm();}));
+F("ip").addEventListener("input",()=>{calcNet();saveForm();});
+F("mask").addEventListener("change",()=>{calcNet();saveForm();});
+F("date").addEventListener("change",()=>calcNet());
+F("gateway").addEventListener("input",()=>{ if(state.gwAuto) setGwAuto(false); calcNet(); saveForm(); });
+$("#gwTag").onclick=()=>{ if(!state.gwAuto){ setGwAuto(true); saveForm(); } };
+F("device").addEventListener("change",onDeviceChange);
+F("firmware").addEventListener("change",saveForm);
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    if($("#dlg").classList.contains("open")) return $("#dlgCancel").click();
+    if($("#impModal").classList.contains("open")) return $("#impCancel").click();
+    $("#sendModal").classList.remove("open"); closeModal();
+  }
+  if(state.tab!=="restore" && state.tab!=="upgrade") return;
+  if(e.ctrlKey && e.key==="Enter"){ e.preventDefault(); generate(); }
+  if(e.altKey && /^[1-6]$/.test(e.key)){
+    const c=CARDS[state.tab][+e.key-1];
+    if(c){ e.preventDefault(); copyCard(state.tab,c.key); }
+  }
+});
+
+/* ---------------- 對話框 ---------------- */
+function dialog({title, message="", input=null, placeholder="", select=null, ok="確定", danger=false}){
+  return new Promise(res=>{
+    $("#dlgTitle").textContent=title; $("#dlgMsg").textContent=message;
+    F("dlgInput").placeholder=placeholder;
+    $("#dlgInputWrap").style.display = input!=null ? "" : "none";
+    $("#dlgSelectWrap").style.display = select ? "" : "none";
+    if(input!=null) F("dlgInput").value=input;
+    if(select) F("dlgSelect").innerHTML=select.map(o=>`<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("");
+    const okb=$("#dlgOk"); okb.textContent=ok; okb.classList.toggle("danger",danger);
+    $("#dlg").classList.add("open");
+    setTimeout(()=> input!=null ? (F("dlgInput").focus(), F("dlgInput").select()) : okb.focus(), 60);
+    const done=v=>{ $("#dlg").classList.remove("open"); okb.onclick=$("#dlgCancel").onclick=F("dlgInput").onkeydown=null; res(v); };
+    okb.onclick=()=>{
+      const iv=F("dlgInput").value.trim(), sv=F("dlgSelect").value;
+      done(input!=null && select ? {input:iv, select:sv} : input!=null ? iv : select ? sv : true);
+    };
+    $("#dlgCancel").onclick=()=>done(null);
+    F("dlgInput").onkeydown=e=>{ if(e.key==="Enter") okb.click(); };
+  });
+}
+
+/* =====================================================================
+   資料庫：匯入 .db → 存在這支手機的瀏覽器
+   ===================================================================== */
+function renderDbView(){
+  const d=DB.data, devs=d?.devices||[];
+  $("#dbState").textContent = devs.length ? "已匯入" : "未匯入";
+  const blocks=devs.reduce((a,x)=>a+x.blocks.length,0);
+  $("#dbStats").innerHTML=`<div><span>型號</span><b>${devs.length}</b></div><div><span>區塊</span><b>${blocks}</b></div>
+    <div><span>資料更新時間</span><b style="font-size:13px;margin-top:6px">${esc(d?.updated||"—")}</b></div>`;
+  $("#dbFile").innerHTML = d ? `${icon("file")}<span>${esc(d.filename||"Device_Command.db")}<br><small style="color:var(--dim);font-family:var(--sans);font-weight:400">匯入於 ${esc(new Date(d.importedAt).toLocaleString("zh-TW",{hour12:false}))}</small></span>`
+                             : `${icon("info")}<span style="font-family:var(--sans);font-weight:500;color:var(--muted)">尚未匯入資料庫，請按下方「匯入資料庫」。</span>`;
+  $("#dbClear").disabled=!d;
+  $("#dbCount").textContent=devs.length;
+  const q=F("dbSearch").value.trim().toLowerCase();
+  $("#dbModels").innerHTML = devs.filter(x=>x.name.toLowerCase().includes(q)).map(x=>`
+    <div class="adm-item ${x.name===F("device").value?"active":""}" data-model="${esc(x.name)}">
+      <span class="nm">${esc(x.name)}</span><span class="sub">${x.blocks.length}</span></div>`).join("")
+    || `<div class="empty-note">${devs.length?"找不到符合的型號":"匯入後會列出所有設備型號"}</div>`;
+}
+F("dbSearch").addEventListener("input",renderDbView);
+$("#dbModels").onclick=e=>{
+  const it=e.target.closest("[data-model]"); if(!it) return;
+  F("device").value=it.dataset.model; onDeviceChange(); switchTab("restore");
+  toast(`已選擇型號 ${it.dataset.model}`,"info",1400);
+};
+$("#dbImport").onclick=()=>{ F("importFile").value=""; F("importFile").click(); };
+function showImportPreview(info){
+  return new Promise(res=>{
+    $("#impFile").innerHTML=`${icon("file")}${esc(info.filename)}`;
+    $("#impStats").innerHTML=`<div><span>型號</span><b>${info.devices}</b></div><div><span>區塊</span><b>${info.blocks}</b></div>
+      <div><span>資料更新時間</span><b style="font-size:13px;margin-top:6px">${esc(info.updated_at||"（未記錄）")}</b></div>`;
+    const d=info.diff, group=(cls,title,names)=>names.length?`<div class="imp-group ${cls}"><h4>${title}（${names.length}）</h4>
+      <div class="names">${names.map(n=>`<span>${esc(n)}</span>`).join("")}</div></div>`:"";
+    const any=d.added.length||d.removed.length||d.changed.length;
+    $("#impDiff").innerHTML = !info.hadData ? "" : any
+      ? group("add","＋ 新增的型號",d.added)+group("mod","✎ 內容有變更的型號",d.changed)+group("del","－ 會被刪除的型號",d.removed)
+        +(d.unchanged?`<div class="imp-same">其餘 ${d.unchanged} 個型號內容相同。</div>`:"")
+      : `<div class="imp-same">${icon("check")} 檔案內容與手機上目前的資料完全相同。</div>`;
+    $("#impModal").classList.add("open");
+    const done=v=>{ $("#impModal").classList.remove("open"); $("#impOk").onclick=$("#impCancel").onclick=null; res(v); };
+    $("#impOk").onclick=()=>done(true);
+    $("#impCancel").onclick=()=>done(false);
+  });
+}
+F("importFile").onchange=async()=>{
+  const file=F("importFile").files[0]; if(!file) return;
+  try{
+    if(/\.xlsx$/i.test(file.name)) throw new Error("手機版只能匯入 .db 檔。請在電腦版「後台管理 → 匯出資料庫」選「資料庫檔（.db）」。");
+    let parsed;
+    try{ parsed=loadRescueDb(await file.arrayBuffer()); }
+    catch(e){ throw new Error(`無法讀取「${file.name}」：${e.message}`); }
+    if(!parsed.devices.length) throw new Error("檔案中沒有任何型號資料");
+    const cur=new Map((DB.data?.devices||[]).map(d=>[d.name,JSON.stringify(d.blocks)]));
+    const inc=new Map(parsed.devices.map(d=>[d.name,JSON.stringify(d.blocks)]));
+    const diff={ added:[...inc.keys()].filter(n=>!cur.has(n)), removed:[...cur.keys()].filter(n=>!inc.has(n)),
+                 changed:[...inc.keys()].filter(n=>cur.has(n)&&cur.get(n)!==inc.get(n)) };
+    diff.unchanged=inc.size-diff.added.length-diff.changed.length;
+    const info={filename:file.name, devices:parsed.devices.length, blocks:parsed.devices.reduce((a,d)=>a+d.blocks.length,0),
+                updated_at:parsed.updated, diff, hadData:!!DB.data};
+    if(!(await showImportPreview(info))) return;
+    const data={devices:parsed.devices, updated:parsed.updated, filename:file.name, importedAt:Date.now()};
+    if(!ls.set("rc.db", data)) throw new Error("手機瀏覽器的儲存空間不足，無法保存資料庫");
+    DB.data=data;
+    await loadStatus(); renderDbView();
+    toast(`已匯入「${file.name}」：${info.devices} 個型號、${info.blocks} 個區塊`,"success",4000);
+  }catch(e){ toast(e.message,"error",6000); }
+};
+$("#dbClear").onclick=async()=>{
+  if(!await dialog({title:"清除手機上的指令資料？", message:"只會刪除這支手機瀏覽器裡的資料庫，電腦上的資料不受影響。之後需要重新匯入才能產生指令。", ok:"清除", danger:true})) return;
+  ls.del("rc.db"); DB.data=null;
+  state.results={restore:{},upgrade:{}}; buildCards("restore"); buildCards("upgrade");
+  await loadStatus(); renderDbView();
+  toast("已清除手機上的指令資料","info");
+};
+
+/* =====================================================================
+   藍牙串口 (BT578 等 BLE 轉 RS232)
+   ===================================================================== */
+const EOL = { cr:"\r", crlf:"\r\n", lf:"\n", none:"" };
+const cfg = Object.assign({ eol:"cr", echo:"0", atTpl:"AT+BAUD={baud}", atEol:"crlf", delay:"500" }, ls.get("rc.cfg", {}) || {});
+const saveCfg = () => ls.set("rc.cfg", cfg);
+
+// 終端畫面：處理 CR / BS / 常見 ANSI 控制碼
+const termEl = $("#term");
+let lines=[""], row=0, col=0, escState=0, escBuf="", dirty=false;
+const MAX_LINES=5000;
+function putChar(ch){
+  let line=lines[row];
+  if(col>line.length) line+=" ".repeat(col-line.length);
+  lines[row]=line.slice(0,col)+ch+line.slice(col+1); col++;
+}
+function newLine(){
+  row++; if(row>=lines.length) lines.push("");
+  if(lines.length>MAX_LINES){ const cut=lines.length-MAX_LINES; lines.splice(0,cut); row-=cut; }
+}
+function handleCsi(seq){
+  const cmd=seq.slice(-1), arg=seq.slice(0,-1);
+  if(cmd==="K"){ if(arg===""||arg==="0") lines[row]=lines[row].slice(0,col); else if(arg==="2") lines[row]=""; }
+  else if(cmd==="D") col=Math.max(0,col-(parseInt(arg,10)||1));
+  else if(cmd==="C") col+=(parseInt(arg,10)||1);
+  else if(cmd==="J"&&arg==="2"){ newLine(); col=0; }
+}
+function feed(text){
+  for(let i=0;i<text.length;i++){
+    const ch=text[i], code=text.charCodeAt(i);
+    if(escState===1){ if(ch==="["){ escState=2; escBuf=""; } else escState=0; continue; }
+    if(escState===2){ escBuf+=ch; if(code>=0x40&&code<=0x7e){ handleCsi(escBuf); escState=0; } else if(escBuf.length>24) escState=0; continue; }
+    if(code===0x1b) escState=1;
+    else if(ch==="\n") newLine();
+    else if(ch==="\r") col=0;
+    else if(code===8) col=Math.max(0,col-1);
+    else if(ch==="\t"){ do putChar(" "); while(col%8); }
+    else if(code<0x20||code===0x7f){}
+    else putChar(ch);
+  }
+  scheduleRender();
+}
+function scheduleRender(forceBottom){
+  if(dirty && !forceBottom) return;
+  dirty=true;
+  requestAnimationFrame(()=>{
+    dirty=false;
+    const stick = forceBottom || termEl.scrollHeight-termEl.scrollTop-termEl.clientHeight<40;
+    termEl.textContent=lines.join("\n");
+    if(stick) termEl.scrollTop=termEl.scrollHeight;
+    // 送出進度列顯示設備最後一行輸出
+    let k=row; while(k>0 && !lines[k].trim()) k--;
+    $("#sbTail").textContent=lines[k]||"";
+  });
+}
+function sysMsg(msg){ if(col!==0){ newLine(); col=0; } feed("["+msg+"]\r\n"); }
+
+const SERVICES=[0xffe0,0xfff0,0xffe5,"6e400001-b5a3-f393-e0a9-e50e24dcca9e","49535343-fe7d-4ae5-8fa9-9fafd205e455"];
+let device=null, rxChar=null, txChar=null, connecting=false, writeChain=Promise.resolve();
+const decoder=new TextDecoder("utf-8"), encoder=new TextEncoder();
+const isConnected=()=>!!(device&&device.gatt&&device.gatt.connected&&txChar);
+
+function setBle(kind, text){
+  const st=$("#bleStatus");
+  st.classList.toggle("on",kind==="on"); st.classList.toggle("busy",kind==="busy"); st.classList.toggle("err",kind==="err");
+  $("#bleText").textContent=text;
+  const on=isConnected();
+  const lbl = on ? "中斷" : "連線";
+  $("#bleBtn span").textContent=lbl; $("#termConnect span").textContent=lbl;
+  $("#termDev").textContent = on ? (device.name||"已連線") : (kind==="busy" ? "連線中…" : "未連線");
+}
+async function findChars(server){
+  const pick=async svcs=>{
+    for(const s of svcs){
+      try{
+        const chars=await s.getCharacteristics(); let rx=null, tx=null;
+        for(const c of chars){ const p=c.properties; if(!rx&&(p.notify||p.indicate)) rx=c; if(!tx&&(p.writeWithoutResponse||p.write)) tx=c; }
+        if(rx&&tx) return {rx,tx};
+      }catch{}
+    }
+    return null;
+  };
+  try{ const f=await pick(await server.getPrimaryServices()); if(f) return f; }catch{}
+  for(const u of SERVICES){ try{ const f=await pick([await server.getPrimaryService(u)]); if(f) return f; }catch{} }
+  return null;
+}
+function onData(ev){ const t=decoder.decode(ev.target.value,{stream:true}); if(t) feed(t); }
+function onDisconnected(){
+  rxChar=null; txChar=null; sender.stop=true;
+  setBle("err","藍牙已中斷"); sysMsg("藍牙已中斷");
+  toast("藍牙已中斷","warn");
+}
+async function bleConnect(){
+  if(connecting) return;
+  if(!navigator.bluetooth){ showBleNotice(); toast("這個瀏覽器不支援藍牙，iPhone 請用 Bluefy 開啟本頁","error",5000); return; }
+  connecting=true; setBle("busy","請選擇裝置…");
+  try{
+    const d=await navigator.bluetooth.requestDevice({acceptAllDevices:true, optionalServices:SERVICES});
+    device=d; device.addEventListener("gattserverdisconnected",onDisconnected);
+    setBle("busy","連線中…");
+    const server=await device.gatt.connect();
+    const found=await findChars(server);
+    if(!found) throw new Error("找不到串口服務（這個裝置可能不是 BLE 串口轉接頭）");
+    rxChar=found.rx; txChar=found.tx;
+    rxChar.addEventListener("characteristicvaluechanged",onData);
+    await rxChar.startNotifications();
+    setBle("on", (device.name||"藍牙串口")+" 已連線");
+    sysMsg("已連線 "+(device.name||"")+"，按 Enter 喚醒設備");
+    toast("藍牙已連線："+(device.name||""),"success");
+  }catch(e){
+    if(e?.name==="NotFoundError") setBle("","藍牙未連線");
+    else { setBle("err","連線失敗"); sysMsg("連線失敗："+(e?.message||e)); toast("藍牙連線失敗："+(e?.message||e),"error",5000); }
+  }finally{ connecting=false; }
+}
+function bleToggle(){ if(isConnected()) device.gatt.disconnect(); else bleConnect(); }
+$("#bleBtn").onclick=bleToggle;
+$("#termConnect").onclick=bleToggle;
+
+// 每包 20 bytes 依序寫入
+function sendBytes(bytes){
+  if(!isConnected()){ sysMsg("尚未連線"); return Promise.resolve(false); }
+  const ch=txChar;
+  for(let i=0;i<bytes.length;i+=20){
+    const chunk=bytes.slice(i,i+20);
+    writeChain=writeChain.then(()=>{
+      if(ch.properties.writeWithoutResponse&&ch.writeValueWithoutResponse) return ch.writeValueWithoutResponse(chunk);
+      if(ch.properties.write&&ch.writeValueWithResponse) return ch.writeValueWithResponse(chunk);
+      return ch.writeValue(chunk);
+    }).then(()=>sleep(15)).catch(e=>sysMsg("送出失敗："+(e?.message||e)));
+  }
+  return writeChain.then(()=>true);
+}
+function sendText(text){
+  if(cfg.echo==="1"&&isConnected()) feed(text.replace(/\r(?!\n)/g,"\r\n"));
+  return sendBytes(encoder.encode(text));
+}
+const sendLine = text => sendText(text+EOL[cfg.eol]);
+
+function setBaud(baud){
+  if(!isConnected()){ toast("請先連線藍牙，再切換鮑率","warn"); return; }
+  const cmd=cfg.atTpl.replace("{baud}",String(baud));
+  sysMsg("送出 "+cmd+"（切換轉接頭鮑率為 "+baud+"）");
+  sendBytes(encoder.encode(cmd+EOL[cfg.atEol])).then(ok=>{
+    if(!ok) return;
+    ls.set("rc.baud",baud); markBaud(baud);
+    toast("已切換鮑率為 "+baud,"success",1600);
+  });
+}
+function markBaud(b){ $("#baud9600").classList.toggle("on",b===9600); $("#baud115200").classList.toggle("on",b===115200); }
+$("#baud9600").onclick=()=>setBaud(9600);
+$("#baud115200").onclick=()=>setBaud(115200);
+
+const KEYMAP={"\\t":"\t","\\x03":"\x03","\\x1a":"\x1a","\\x1b":"\x1b","\\x1b[A":"\x1b[A","\\x1b[B":"\x1b[B"};
+document.querySelectorAll("[data-key]").forEach(b=>b.onclick=()=>{
+  const k=b.dataset.key;
+  if(!isConnected()) return toast("藍牙尚未連線","warn");
+  sendBytes(encoder.encode(k==="enter" ? EOL[cfg.eol] : (KEYMAP[k] ?? k)));
+});
+function submitCmd(){
+  if(!isConnected()) return toast("藍牙尚未連線","warn");
+  sendLine(F("cmd").value); F("cmd").value=""; F("cmd").focus();
+}
+$("#cmdSend").onclick=submitCmd;
+F("cmd").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); submitCmd(); } });
+$("#termCopy").onclick=async()=>{ await copyText(lines.join("\n")); toast("已複製終端機內容","success",1600); };
+$("#termClear").onclick=()=>{ lines=[""]; row=0; col=0; scheduleRender(true); };
+
+// 設定
+$("#termSettingsBtn").onclick=()=>{ const s=$("#termSettings"); s.hidden=!s.hidden; $("#termSettingsBtn").classList.toggle("on",!s.hidden); };
+F("cfgDelay").value=cfg.delay; F("cfgEol").value=cfg.eol; F("cfgEcho").value=cfg.echo; F("cfgAt").value=cfg.atTpl; F("cfgAtEol").value=cfg.atEol;
+[["cfgDelay","delay"],["cfgEol","eol"],["cfgEcho","echo"],["cfgAtEol","atEol"]].forEach(([id,k])=>F(id).addEventListener("change",()=>{ cfg[k]=F(id).value; saveCfg(); }));
+F("cfgAt").addEventListener("input",()=>{ cfg.atTpl=F("cfgAt").value.trim()||"AT+BAUD={baud}"; saveCfg(); });
+
+function showBleNotice(){
+  const n=$("#termNotice"); n.hidden=false;
+  n.textContent="這個瀏覽器不支援 Web Bluetooth。iPhone 請安裝「Bluefy – Web BLE Browser」，用 Bluefy 開啟本頁才能連線藍牙（產生指令、複製不受影響）。";
+}
+
+/* =====================================================================
+   送出指令：選擇要送的行 → 逐行透過藍牙送出
+   ===================================================================== */
+const NOTE_RE=/^\s*[#*!]/, CJK_RE=/[\u3000-\u303f\u3400-\u9fff\uf900-\ufaff\uff00-\uffef]/;
+const isCommand = l => !!l.trim() && !NOTE_RE.test(l) && !CJK_RE.test(l);
+let sendCtx=null;
+const sender={running:false, stop:false};
+
+function openSend(tab,c,i){
+  syncEdit(tab,c.key);
+  const text=state.results[tab][c.key];
+  if(text==null) return toast("請先產生指令","warn");
+  if(text===MISSING || !text.trim()) return toast("此區塊沒有可送出的內容","warn");
+  const all=text.split("\n");
+  // 帳密卡片是登入時參考用，預設不勾選，用「送」逐行送出
+  sendCtx={tab, key:c.key, title:c.title, lines:all, checked:all.map(l=>c.key!=="account" && isCommand(l)), sent:new Set()};
+  $("#sendCard").style.setProperty("--c",c.color);
+  $("#sendStep").textContent=i+1; $("#sendTitle").textContent=c.title;
+  renderSend();
+  $("#sendModal").classList.add("open");
+}
+function renderSend(){
+  const s=sendCtx; if(!s) return;
+  $("#sendList").innerHTML=s.lines.map((l,i)=> !l.trim() ? "" : `
+    <div class="sl ${isCommand(l)?"":"note"} ${s.checked[i]?"":"off"} ${s.sent.has(i)?"sent":""}">
+      <label><input type="checkbox" data-ck="${i}" ${s.checked[i]?"checked":""}><code>${esc(l)}</code></label>
+      <button class="btn" data-one="${i}">送</button></div>`).join("");
+  updateSendInfo();
+}
+function updateSendInfo(){
+  const s=sendCtx, n=s.checked.filter(Boolean).length;
+  const conn=isConnected();
+  $("#sendInfo").innerHTML=`<span class="chip">${icon("check")}已勾選 <b>${n}</b> 行</span>
+    <span class="chip">${icon("clock")}每行間隔 <b>${(cfg.delay/1000)} 秒</b></span>
+    <span class="chip ${conn?"":"warn"}">${icon("bt")}${conn?esc(device.name||"藍牙")+" 已連線":"藍牙尚未連線"}</span>`;
+  $("#sendGoLabel").textContent = conn ? `送出勾選的 ${n} 行` : "先連線藍牙";
+  $("#sendGo").disabled = conn && !n;
+}
+$("#sendList").onchange=e=>{
+  const ck=e.target.closest("[data-ck]"); if(!ck) return;
+  sendCtx.checked[+ck.dataset.ck]=ck.checked;
+  ck.closest(".sl").classList.toggle("off",!ck.checked);
+  updateSendInfo();
+};
+$("#sendList").onclick=async e=>{
+  const b=e.target.closest("[data-one]"); if(!b) return;
+  if(!isConnected()) return bleConnect().then(updateSendInfo);
+  const i=+b.dataset.one;
+  if(await sendLines([sendCtx.lines[i]], sendCtx.title)){ sendCtx.sent.add(i); b.closest(".sl").classList.add("sent"); }
+};
+$("#sendAll").onclick=()=>{ sendCtx.checked=sendCtx.lines.map(l=>!!l.trim()); renderSend(); };
+$("#sendNone").onclick=()=>{ sendCtx.checked=sendCtx.lines.map(()=>false); renderSend(); };
+$("#sendClose").onclick=()=>$("#sendModal").classList.remove("open");
+$("#sendModal").onclick=e=>{ if(e.target.id==="sendModal") $("#sendModal").classList.remove("open"); };
+$("#sendGo").onclick=async()=>{
+  if(!isConnected()){ await bleConnect(); return updateSendInfo(); }
+  const s=sendCtx, idx=s.lines.map((_,i)=>i).filter(i=>s.checked[i]);
+  if(!idx.length) return;
+  $("#sendModal").classList.remove("open");
+  const ok=await sendLines(idx.map(i=>s.lines[i]), s.title, i=>s.sent.add(idx[i]));
+  if(ok){ state.done[s.tab].add(s.key); $(`#card-${s.key}`)?.classList.add("done"); }
+};
+
+async function sendLines(list, label, onEach){
+  if(!isConnected()){ toast("藍牙尚未連線","warn"); return false; }
+  if(sender.running){ toast("正在送出其他指令，請等它完成或按「停止」","warn"); return false; }
+  sender.running=true; sender.stop=false;
+  const bar=$("#sendbar"), total=list.length;
+  $("#sbLabel").textContent=label; $("#sbCount").textContent=`0/${total}`; $("#sbBar").style.width="0";
+  bar.classList.add("show");
+  let n=0;
+  try{
+    for(; n<total; n++){
+      if(sender.stop || !isConnected()) break;
+      await sendLine(list[n]);
+      onEach && onEach(n);
+      $("#sbCount").textContent=`${n+1}/${total}`; $("#sbBar").style.width=((n+1)/total*100)+"%";
+      if(n<total-1) await sleep(+cfg.delay);
+    }
+  }finally{
+    sender.running=false;
+    setTimeout(()=>{ if(!sender.running) bar.classList.remove("show"); }, n<total ? 2500 : 1600);
+  }
+  if(n<total){ toast(`已停止：送出 ${n}/${total} 行`,"warn"); return false; }
+  if(total>1) toast(`已送出「${label}」共 ${total} 行`,"success");
+  return true;
+}
+$("#sbStop").onclick=()=>{ sender.stop=true; };
+
+/* ---------------- 初始化 ---------------- */
+buildCards("restore"); buildCards("upgrade");
+loadForm();
+F("date").value=yesterday();
+if(state.gwAuto) setGwAuto(true); else restoreGateway(F("gateway").value);
+const savedTab=ls.get("msan.tab","restore");
+switchTab(["upgrade","term","db"].includes(savedTab) ? savedTab : "restore");
+loadStatus().then(()=>{ if(!DB.data) toast("請先到「資料庫」頁匯入指令資料庫","info",4000); }).catch(e=>toast(e.message,"error",6000));
+markBaud(ls.get("rc.baud",null));
+setBle("","藍牙未連線");
+if(!navigator.bluetooth) showBleNotice();
+feed("緊急救援 終端機\r\n按上方「連線」選擇你的藍牙串口轉接頭（BT578）。\r\n");
+requestAnimationFrame(movePill);
+</script>
+</body>
+</html>
