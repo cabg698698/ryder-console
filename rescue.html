@@ -1579,7 +1579,10 @@ function scheduleRender(forceBottom){
     else if(follow && !touching) termEl.scrollTop=termEl.scrollHeight;
     else { termEl.scrollTop=topPos; if(changed) $("#jumpBtn").classList.add("show"); }
     let k=row; while(k>0 && !(lines[k]||"").trim()) k--;
-    $("#sbTail").textContent=lines[k]||"";
+    const last=(lines[k]||"").trim();
+    $("#sbTail").textContent=last;
+    // 輸入框提示：顯示設備目前的提示字元，例如 DAS-3626:admin#
+    F("cmd").placeholder = isConnected() && last ? `${last.length>32 ? "…"+last.slice(-32) : last}  輸入指令` : "輸入指令，按送出";
   });
 }
 function sysMsg(msg){ if(col!==0){ newLine(); col=0; } feed("["+msg+"]\r\n"); }
@@ -1725,7 +1728,12 @@ function fitViewport(){
 }
 if(window.visualViewport){ visualViewport.addEventListener("resize",fitViewport); visualViewport.addEventListener("scroll",fitViewport); }
 window.addEventListener("resize",fitViewport);
-F("cmd").addEventListener("focus",()=>{ kbFocus=true; fitViewport(); setTimeout(()=>{ fitViewport(); if(follow) goBottom(); },300); });
+// 點輸入框：一律跳到最新一行 (鍵盤彈出動畫期間多跳幾次，確保停在最底下)，才看得到目前在設備的哪一層
+F("cmd").addEventListener("focus",()=>{
+  kbFocus=true; fitViewport(); goBottom();
+  [120,300,600].forEach(ms=>setTimeout(()=>{ if(kbFocus){ fitViewport(); goBottom(); } },ms));
+});
+if(window.visualViewport) visualViewport.addEventListener("resize",()=>{ if(kbFocus) requestAnimationFrame(goBottom); });
 F("cmd").addEventListener("blur",()=>{ kbFocus=false; setTimeout(()=>{ window.scrollTo(0,0); fitViewport(); if(follow) goBottom(); },250); });
 fitViewport();
 $("#cmdSend").onclick=submitCmd;
