@@ -349,6 +349,8 @@ footer span{display:inline-flex;align-items:center;gap:6px}
 @media (max-width:900px){.db-grid{grid-template-columns:1fr}}
 .db-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
 .db-actions{display:flex;gap:8px;flex-wrap:wrap}
+.file-btn{position:relative;overflow:hidden}
+.file-btn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
 .howto{font-size:13.5px;color:var(--muted);line-height:1.75;margin:0;padding-left:20px}
 .howto b{color:var(--text)}
 .howto code{font-family:var(--mono);font-size:12.5px;color:var(--accent2);word-break:break-all}
@@ -551,14 +553,13 @@ footer span{display:inline-flex;align-items:center;gap:6px}
           <div class="imp-stats" id="dbStats"></div>
           <div class="imp-file" id="dbFile"></div>
           <div class="db-actions">
-            <button class="btn primary sm" id="dbImport"><svg class="i"><use href="#i-upload"/></svg>匯入資料庫（.db）</button>
+            <label class="btn primary sm file-btn" id="dbImport"><svg class="i"><use href="#i-upload"/></svg>匯入資料庫（.db）<input type="file" id="importFile"></label>
             <button class="btn ghost danger" id="dbClear"><svg class="i"><use href="#i-trash"/></svg>清除手機上的資料</button>
-            <input type="file" id="importFile" hidden>
           </div>
           <div class="privacy"><svg class="i"><use href="#i-info"/></svg><span>指令資料（含帳密、ACL）只存在這支手機的瀏覽器裡，不會上傳到任何地方，也不在網站的程式碼中。換手機或清除瀏覽器資料後需要重新匯入。</span></div>
           <ol class="howto">
             <li>在電腦的「緊急救援」程式：<b>後台管理 → 匯出資料庫 → 資料庫檔（.db）</b>，存到 OneDrive。<br>或直接使用 OneDrive 裡的 <code>指令產生\Device_Command.db</code>。</li>
-            <li>在這裡按 <b>匯入資料庫</b>，從「檔案」App 的 OneDrive 選這個 .db 檔。</li>
+            <li>在這裡按 <b>匯入資料庫</b>，從 OneDrive 選這個 .db 檔。<br>若看不到 OneDrive 或點了沒反應：在 OneDrive App 對檔案按「⋯ → 分享 → 儲存到檔案 → 我的 iPhone」，再從「我的 iPhone」匯入。</li>
             <li>電腦上的指令有修改時，重新匯出、再匯入一次即可更新。</li>
           </ol>
         </div>
@@ -1355,7 +1356,7 @@ $("#dbModels").onclick=e=>{
   F("device").value=it.dataset.model; onDeviceChange(); switchTab("restore");
   toast(`已選擇型號 ${it.dataset.model}`,"info",1400);
 };
-$("#dbImport").onclick=()=>{ F("importFile").value=""; F("importFile").click(); };
+F("importFile").addEventListener("click",()=>{ F("importFile").value=""; });
 function showImportPreview(info){
   return new Promise(res=>{
     $("#impFile").innerHTML=`${icon("file")}${esc(info.filename)}`;
@@ -1374,13 +1375,20 @@ function showImportPreview(info){
     $("#impCancel").onclick=()=>done(false);
   });
 }
-F("importFile").onchange=async()=>{
-  const file=F("importFile").files[0]; if(!file) return;
+function readFileBuffer(file){
+  if(file.arrayBuffer) return file.arrayBuffer();
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error||new Error("讀取失敗")); r.readAsArrayBuffer(file); });
+}
+async function onImportPicked(){
+  const file=F("importFile").files && F("importFile").files[0];
+  if(!file) return toast("沒有取得檔案。若是從 OneDrive 選取，請先在 OneDrive App 將檔案「儲存到檔案 → 我的 iPhone」再匯入。","warn",6000);
+  toast(`正在讀取「${file.name}」（${(file.size/1024).toFixed(0)} KB）…`,"info",1800);
   try{
     if(/\.xlsx$/i.test(file.name)) throw new Error("手機版只能匯入 .db 檔。請在電腦版「後台管理 → 匯出資料庫」選「資料庫檔（.db）」。");
+    if(!file.size) throw new Error(`「${file.name}」是空的（0 KB）。若檔案在 OneDrive，可能還沒下載到手機，或被公司政策擋住；請先在 OneDrive App 存到「我的 iPhone」再匯入。`);
     let parsed;
-    try{ parsed=loadRescueDb(await file.arrayBuffer()); }
-    catch(e){ throw new Error(`無法讀取「${file.name}」：${e.message}`); }
+    try{ parsed=loadRescueDb(await readFileBuffer(file)); }
+    catch(e){ throw new Error(`無法讀取「${file.name}」：${e.message||e}`); }
     if(!parsed.devices.length) throw new Error("檔案中沒有任何型號資料");
     const cur=new Map((DB.data?.devices||[]).map(d=>[d.name,JSON.stringify(d.blocks)]));
     const inc=new Map(parsed.devices.map(d=>[d.name,JSON.stringify(d.blocks)]));
@@ -1395,8 +1403,10 @@ F("importFile").onchange=async()=>{
     DB.data=data;
     await loadStatus(); renderDbView();
     toast(`已匯入「${file.name}」：${info.devices} 個型號、${info.blocks} 個區塊`,"success",4000);
-  }catch(e){ toast(e.message,"error",6000); }
-};
+  }catch(e){ toast(e.message||String(e),"error",8000); }
+}
+F("importFile").addEventListener("change",onImportPicked);
+F("importFile").addEventListener("input",()=>{});  // 部分 iOS WebView 只觸發 input，change 仍會跟著觸發
 $("#dbClear").onclick=async()=>{
   if(!await dialog({title:"清除手機上的指令資料？", message:"只會刪除這支手機瀏覽器裡的資料庫，電腦上的資料不受影響。之後需要重新匯入才能產生指令。", ok:"清除", danger:true})) return;
   ls.del("rc.db"); DB.data=null;
